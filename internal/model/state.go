@@ -3,12 +3,15 @@ package model
 
 import "time"
 
+// PlantState is a type alias for string, documenting slot lifecycle stages.
+type PlantState = string
+
 // Plant states
 const (
-	PlantEmpty   = "empty"
-	PlantPlanted = "planted"
-	PlantGrowing = "growing"
-	PlantReady   = "ready"
+	PlantEmpty   PlantState = "empty"
+	PlantPlanted PlantState = "planted"
+	PlantGrowing PlantState = "growing"
+	PlantReady   PlantState = "ready"
 )
 
 // Game constants
@@ -18,7 +21,7 @@ const (
 	FieldExpandBaseCost float64 = 100
 	HarvestUpgradeCost float64 = 250
 	StockValue    float64 = 5
-	AutoSellThresholdInit = 5
+	DefaultAutoSellThreshold = 5
 	MaxLogEntries         = 20
 	TicksPerDay           = 60
 )
@@ -26,8 +29,8 @@ const (
 var AutoSaveInterval = 60 * time.Second
 
 type PlantSlot struct {
-	State          string `json:"state"`
-	TicksRemaining int    `json:"ticks_remaining"`
+	State          PlantState `json:"state"`
+	TicksRemaining int        `json:"ticks_remaining"`
 }
 
 type LogEntry struct {
@@ -81,4 +84,5 @@ type SaveData struct {
 	Day               int         `json:"day"`
 	TickCount         int         `json:"tick_count"`
 	LastSave          time.Time   `json:"last_save"`
+	MoneySnapshot     float64     `json:"money_snapshot"`
 }
