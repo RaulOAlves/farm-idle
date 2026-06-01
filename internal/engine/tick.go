@@ -43,11 +43,10 @@ func Tick(m model.Model) model.Model {
 		}
 	}
 
-	if m.Stock > m.AutoSellThreshold {
-		toSell := m.Stock - m.AutoSellThreshold
-		earned := float64(toSell) * model.StockValue
-		m.Stock -= toSell
+	if m.AutoSellThreshold > 0 && m.Stock >= m.AutoSellThreshold {
+		earned := float64(m.Stock) * model.StockValue
 		m.Money += earned
+		m.Stock = 0
 		m = addLog(m, fmt.Sprintf("💰 Auto-venda: +$%.0f", earned))
 	}
 
@@ -82,9 +81,12 @@ func BuySeeds(m model.Model) (model.Model, error) {
 	if m.Money < model.SeedCost {
 		return m, ErrInsufficientFunds
 	}
+	if m.SeedsPerPurchase <= 0 {
+		m.SeedsPerPurchase = 5
+	}
 	m.Money -= model.SeedCost
-	m.Seeds++
-	return addLog(m, "🌱 Comprou 1 semente"), nil
+	m.Seeds += m.SeedsPerPurchase
+	return addLog(m, fmt.Sprintf("🌱 Comprou %d sementes", m.SeedsPerPurchase)), nil
 }
 
 func ExpandField(m model.Model) (model.Model, error) {

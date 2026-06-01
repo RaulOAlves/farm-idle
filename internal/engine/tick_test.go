@@ -123,17 +123,32 @@ func TestTick_OriginalNotMutated(t *testing.T) {
 	}
 }
 
-func TestBuySeeds_Success(t *testing.T) {
+func TestBuySeeds_SuccessDefaultsToBatchOfFive(t *testing.T) {
 	m := model.Model{Money: 20}
 	got, err := engine.BuySeeds(m)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.Seeds != 1 {
-		t.Errorf("seeds: want 1, got %d", got.Seeds)
+	if got.Seeds != 5 {
+		t.Errorf("seeds: want 5, got %d", got.Seeds)
 	}
 	if got.Money != 10 {
 		t.Errorf("money: want 10, got %.0f", got.Money)
+	}
+}
+
+func TestBuySeeds_SuccessBuysBatch(t *testing.T) {
+	m := model.Model{Money: 100, Seeds: 0, SeedsPerPurchase: 5}
+
+	got, err := engine.BuySeeds(m)
+	if err != nil {
+		t.Fatalf("BuySeeds returned error: %v", err)
+	}
+	if got.Seeds != 5 {
+		t.Fatalf("seeds: want 5, got %d", got.Seeds)
+	}
+	if got.Money != 90 {
+		t.Fatalf("money: want 90, got %.0f", got.Money)
 	}
 }
 
@@ -289,6 +304,23 @@ func TestTick_RevenueTrackerExpiresOldBucketAfter60Ticks(t *testing.T) {
 	got = engine.Tick(got)
 	if got.RecentRevenue != 0 {
 		t.Fatalf("recent revenue after bucket expiry: want 0, got %.0f", got.RecentRevenue)
+	}
+}
+
+func TestTick_AutoSellTriggersAtExactThreshold(t *testing.T) {
+	m := model.Model{
+		Money:             0,
+		Stock:             5,
+		AutoSellThreshold: 5,
+		Plants:            []model.PlantSlot{},
+	}
+
+	got := engine.Tick(m)
+	if got.Stock != 0 {
+		t.Fatalf("stock after sell: want 0, got %d", got.Stock)
+	}
+	if got.Money != model.StockValue*5 {
+		t.Fatalf("money after sell: want %.0f, got %.0f", model.StockValue*5, got.Money)
 	}
 }
 
