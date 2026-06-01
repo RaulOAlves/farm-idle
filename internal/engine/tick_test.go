@@ -112,3 +112,149 @@ func TestTick_OriginalNotMutated(t *testing.T) {
 		t.Error("original model.Plants was mutated by Tick()")
 	}
 }
+
+func TestBuySeeds_Success(t *testing.T) {
+	m := model.Model{Money: 20}
+	got, err := engine.BuySeeds(m)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Seeds != 1 {
+		t.Errorf("seeds: want 1, got %d", got.Seeds)
+	}
+	if got.Money != 10 {
+		t.Errorf("money: want 10, got %.0f", got.Money)
+	}
+}
+
+func TestBuySeeds_InsufficientFunds(t *testing.T) {
+	m := model.Model{Money: 5}
+	_, err := engine.BuySeeds(m)
+	if err != engine.ErrInsufficientFunds {
+		t.Errorf("want ErrInsufficientFunds, got %v", err)
+	}
+}
+
+func TestExpandField_Success(t *testing.T) {
+	m := model.Model{
+		Money:     200,
+		FieldSize: 10,
+		Plants:    make([]model.PlantSlot, 10),
+	}
+	got, err := engine.ExpandField(m)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.FieldSize != 15 {
+		t.Errorf("field_size: want 15, got %d", got.FieldSize)
+	}
+	if len(got.Plants) != 15 {
+		t.Errorf("len(plants): want 15, got %d", len(got.Plants))
+	}
+	if got.Money != 100 {
+		t.Errorf("money: want 100, got %.0f", got.Money)
+	}
+}
+
+func TestExpandField_ScalingCost(t *testing.T) {
+	m := model.Model{
+		Money:     10000,
+		FieldSize: 20,
+		Plants:    make([]model.PlantSlot, 20),
+	}
+	got, err := engine.ExpandField(m)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// custo = 100 * (20/10) = 200
+	if got.Money != 9800 {
+		t.Errorf("money: want 9800, got %.0f", got.Money)
+	}
+}
+
+func TestExpandField_InsufficientFunds(t *testing.T) {
+	m := model.Model{Money: 50, FieldSize: 10, Plants: make([]model.PlantSlot, 10)}
+	_, err := engine.ExpandField(m)
+	if err != engine.ErrInsufficientFunds {
+		t.Errorf("want ErrInsufficientFunds, got %v", err)
+	}
+}
+
+func TestUpgradeHarvest_Success(t *testing.T) {
+	m := model.Model{Money: 300, HarvestLevel: 1}
+	got, err := engine.UpgradeHarvest(m)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.HarvestLevel != 2 {
+		t.Errorf("harvest_level: want 2, got %d", got.HarvestLevel)
+	}
+	if got.Money != 50 {
+		t.Errorf("money: want 50, got %.0f", got.Money)
+	}
+}
+
+func TestSellAll_SellsStock(t *testing.T) {
+	m := model.Model{Stock: 4, Money: 0}
+	got, earned := engine.SellAll(m)
+	if got.Stock != 0 {
+		t.Errorf("stock: want 0, got %d", got.Stock)
+	}
+	if earned != 20 {
+		t.Errorf("earned: want 20, got %.0f", earned)
+	}
+	if got.Money != 20 {
+		t.Errorf("money: want 20, got %.0f", got.Money)
+	}
+}
+
+func TestSellAll_EmptyStock(t *testing.T) {
+	m := model.Model{Stock: 0, Money: 50}
+	got, earned := engine.SellAll(m)
+	if earned != 0 {
+		t.Errorf("earned: want 0, got %.0f", earned)
+	}
+	if got.Money != 50 {
+		t.Errorf("money: want 50, got %.0f", got.Money)
+	}
+}
+
+func TestSetAutoSellThreshold(t *testing.T) {
+	m := model.Model{AutoSellThreshold: 5}
+	got := engine.SetAutoSellThreshold(m, 3)
+	if got.AutoSellThreshold != 3 {
+		t.Errorf("threshold: want 3, got %d", got.AutoSellThreshold)
+	}
+}
+
+func TestExpandFieldCost(t *testing.T) {
+	tests := []struct {
+		fieldSize int
+		wantCost  float64
+	}{
+		{10, 100},
+		{20, 200},
+		{5, 100}, // fieldSize < 10 → multiplier = 1
+	}
+	for _, tc := range tests {
+		got := engine.ExpandFieldCost(tc.fieldSize)
+		if got != tc.wantCost {
+			t.Errorf("ExpandFieldCost(%d): want %.0f, got %.0f", tc.fieldSize, tc.wantCost, got)
+		}
+	}
+}
+
+func TestTick_UpdatesMoneySnapshot(t *testing.T) {
+	m := model.Model{
+		TickCount:         model.TicksPerDay - 1,
+		Day:               1,
+		Money:             150,
+		HarvestLevel:      1,
+		AutoSellThreshold: 999,
+		Plants:            []model.PlantSlot{},
+	}
+	got := engine.Tick(m)
+	if got.MoneySnapshot != 150 {
+		t.Errorf("MoneySnapshot: want 150, got %.0f", got.MoneySnapshot)
+	}
+}
