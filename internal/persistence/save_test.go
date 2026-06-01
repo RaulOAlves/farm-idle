@@ -3,6 +3,7 @@ package persistence_test
 
 import (
 	"farm-idle/internal/persistence"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -75,5 +76,37 @@ func TestDefaultModel_HasCorrectInitialValues(t *testing.T) {
 	}
 	if m.HarvestLevel != 1 {
 		t.Errorf("harvest_level: want 1, got %d", m.HarvestLevel)
+	}
+	if m.MoneySnapshot != 100 {
+		t.Errorf("money_snapshot: want 100, got %.0f", m.MoneySnapshot)
+	}
+}
+
+func TestLoad_LegacyZeroSnapshotUsesCurrentMoney(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "save.json")
+	content := `{
+  "money": 250,
+  "seeds": 4,
+  "stock": 0,
+  "field_size": 10,
+  "plants": [],
+  "harvest_level": 1,
+  "auto_sell_threshold": 5,
+  "day": 1,
+  "tick_count": 0,
+  "last_save": "0001-01-01T00:00:00Z",
+  "money_snapshot": 0
+}`
+
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	m, err := persistence.Load(path)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+	if m.MoneySnapshot != m.Money {
+		t.Errorf("money_snapshot: want %.0f, got %.0f", m.Money, m.MoneySnapshot)
 	}
 }

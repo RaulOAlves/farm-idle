@@ -22,6 +22,7 @@ func DefaultModel() model.Model {
 		HarvestLevel:      1,
 		AutoSellThreshold: model.DefaultAutoSellThreshold,
 		Day:               1,
+		MoneySnapshot:     100,
 	}
 }
 
@@ -85,6 +86,9 @@ func Load(path string) (model.Model, error) {
 	m.TickCount = data.TickCount
 	m.LastSave = data.LastSave
 	m.MoneySnapshot = data.MoneySnapshot
+	if m.MoneySnapshot == 0 && m.TickCount == 0 {
+		m.MoneySnapshot = m.Money
+	}
 
 	return m, nil
 }
