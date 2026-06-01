@@ -102,14 +102,24 @@ func TestTick_DayIncrements(t *testing.T) {
 
 func TestTick_OriginalNotMutated(t *testing.T) {
 	m := model.Model{
+		Money:             25,
 		Seeds:             1,
-		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
+		Plants:            []model.PlantSlot{{State: model.PlantEmpty, TicksRemaining: 7}},
 		HarvestLevel:      1,
 		AutoSellThreshold: 999,
 	}
 	_ = engine.Tick(m)
+	if m.Seeds != 1 {
+		t.Errorf("original seeds mutated: want 1, got %d", m.Seeds)
+	}
+	if m.Money != 25 {
+		t.Errorf("original money mutated: want 25, got %.0f", m.Money)
+	}
 	if m.Plants[0].State != model.PlantEmpty {
 		t.Error("original model.Plants was mutated by Tick()")
+	}
+	if m.Plants[0].TicksRemaining != 7 {
+		t.Errorf("original ticks mutated: want 7, got %d", m.Plants[0].TicksRemaining)
 	}
 }
 
@@ -268,7 +278,7 @@ func TestTick_RevenueTrackerExpiresOldBucketAfter60Ticks(t *testing.T) {
 	}
 
 	got := engine.Tick(m)
-	for i := 0; i < 59; i++ {
+	for i := 0; i < model.TicksPerDay-1; i++ {
 		got = engine.Tick(got)
 	}
 

@@ -3,8 +3,8 @@ package model
 
 import "time"
 
-// PlantState is a type alias for string, documenting slot lifecycle stages.
-type PlantState = string
+// PlantState documents slot lifecycle stages.
+type PlantState string
 
 // Plant states
 const (
@@ -27,7 +27,7 @@ const (
 	TicksPerDay                           = 60
 )
 
-var AutoSaveInterval = 60 * time.Second
+const AutoSaveInterval = 60 * time.Second
 
 type PlantSlot struct {
 	State          PlantState `json:"state"`
@@ -47,7 +47,7 @@ type OfflineResult struct {
 }
 
 type RevenueTracker struct {
-	Buckets [60]float64
+	Buckets [TicksPerDay]float64
 	Cursor  int
 	Total   float64
 }
