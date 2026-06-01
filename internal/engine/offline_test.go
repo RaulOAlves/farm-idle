@@ -58,7 +58,7 @@ func TestCalcOfflineProgress_CapAt24h(t *testing.T) {
 		Plants:            []model.PlantSlot{},
 	}
 	_, report := engine.CalcOfflineProgress(m, now)
-	if report.Duration > 24*time.Hour+time.Second {
+	if report.Duration > 24*time.Hour {
 		t.Errorf("duration: want <= 24h, got %v", report.Duration)
 	}
 }
