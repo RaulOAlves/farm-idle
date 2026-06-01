@@ -2,9 +2,9 @@
 package engine_test
 
 import (
-	"testing"
 	"farm-idle/internal/engine"
 	"farm-idle/internal/model"
+	"testing"
 )
 
 func TestTick_PlantsSeeds(t *testing.T) {
@@ -256,5 +256,50 @@ func TestTick_UpdatesMoneySnapshot(t *testing.T) {
 	got := engine.Tick(m)
 	if got.MoneySnapshot != 150 {
 		t.Errorf("MoneySnapshot: want 150, got %.0f", got.MoneySnapshot)
+	}
+}
+
+func TestTick_RevenueTrackerExpiresOldBucketAfter60Ticks(t *testing.T) {
+	m := model.Model{
+		Money:             0,
+		Stock:             5,
+		AutoSellThreshold: 5,
+		Plants:            []model.PlantSlot{},
+	}
+
+	got := engine.Tick(m)
+	for i := 0; i < 59; i++ {
+		got = engine.Tick(got)
+	}
+
+	if got.RecentRevenue != model.StockValue*5 {
+		t.Fatalf("recent revenue after first window: want %.0f, got %.0f", model.StockValue*5, got.RecentRevenue)
+	}
+
+	got = engine.Tick(got)
+	if got.RecentRevenue != 0 {
+		t.Fatalf("recent revenue after bucket expiry: want 0, got %.0f", got.RecentRevenue)
+	}
+}
+
+func TestTick_AutoBuyUsesConfiguredMinimum(t *testing.T) {
+	m := model.Model{
+		Money:                  100,
+		Seeds:                  4,
+		SeedsPerPurchase:       5,
+		AutoBuyEnabled:         true,
+		AutoBuyMinimum:         5,
+		AutoBuyMaxCashFraction: 0.30,
+		AutoSellThreshold:      999,
+		Plants:                 []model.PlantSlot{},
+	}
+
+	got := engine.Tick(m)
+
+	if got.Seeds != 9 {
+		t.Fatalf("seeds after auto-buy: want 9, got %d", got.Seeds)
+	}
+	if got.Money != 90 {
+		t.Fatalf("money after auto-buy: want 90, got %.0f", got.Money)
 	}
 }

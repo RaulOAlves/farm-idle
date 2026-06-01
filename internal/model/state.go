@@ -16,14 +16,15 @@ const (
 
 // Game constants
 const (
-	GrowTicks             = 30
-	SeedCost      float64 = 10
-	FieldExpandBaseCost float64 = 100
-	HarvestUpgradeCost float64 = 250
-	StockValue    float64 = 5
-	DefaultAutoSellThreshold = 5
-	MaxLogEntries         = 20
-	TicksPerDay           = 60
+	GrowTicks                             = 30
+	SeedCost                      float64 = 10
+	FieldExpandBaseCost           float64 = 100
+	HarvestUpgradeCost            float64 = 250
+	StockValue                    float64 = 5
+	DefaultAutoSellThreshold              = 5
+	DefaultAutoBuyMaxCashFraction         = 0.30
+	MaxLogEntries                         = 20
+	TicksPerDay                           = 60
 )
 
 var AutoSaveInterval = 60 * time.Second
@@ -45,6 +46,12 @@ type OfflineResult struct {
 	Efficiency float64 // harvests_reais / harvests_teoricos_maximos
 }
 
+type RevenueTracker struct {
+	Buckets [60]float64
+	Cursor  int
+	Total   float64
+}
+
 type Model struct {
 	// Resources
 	Money float64
@@ -55,16 +62,24 @@ type Model struct {
 	FieldSize int
 	Plants    []PlantSlot
 
+	// Economy config
+	SeedsPerPurchase       int
+	AutoBuyEnabled         bool
+	AutoBuyMinimum         int
+	AutoBuyMaxCashFraction float64
+
 	// Upgrades
 	HarvestLevel      int
 	AutoSellThreshold int
 
 	// Meta
-	Day           int
-	TickCount     int
-	LastSave      time.Time
-	Log           []LogEntry
-	MoneySnapshot float64 // money há TicksPerDay ticks atrás, para lucro/min
+	Day            int
+	TickCount      int
+	LastSave       time.Time
+	Log            []LogEntry
+	MoneySnapshot  float64 // money há TicksPerDay ticks atrás, para lucro/min
+	RevenueTracker RevenueTracker
+	RecentRevenue  float64 // receita operacional recente; não é lucro líquido
 
 	// UI state — não persistido
 	Cursor        int
