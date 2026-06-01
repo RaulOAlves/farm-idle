@@ -93,11 +93,12 @@ func ExpandField(m model.Model) (model.Model, error) {
 		return m, ErrInsufficientFunds
 	}
 	m.Money -= cost
-	newSlots := make([]model.PlantSlot, 5)
-	for i := range newSlots {
-		newSlots[i] = model.PlantSlot{State: model.PlantEmpty}
+	plants := make([]model.PlantSlot, len(m.Plants)+5)
+	copy(plants, m.Plants)
+	for i := len(m.Plants); i < len(plants); i++ {
+		plants[i] = model.PlantSlot{State: model.PlantEmpty}
 	}
-	m.Plants = append(m.Plants, newSlots...)
+	m.Plants = plants
 	m.FieldSize += 5
 	return addLog(m, fmt.Sprintf("🚜 Campo: +5 slots ($%.0f)", cost)), nil
 }
