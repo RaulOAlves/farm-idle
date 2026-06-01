@@ -61,7 +61,9 @@ func Tick(m model.Model) model.Model {
 
 func addLog(m model.Model, msg string) model.Model {
 	entry := model.LogEntry{Timestamp: time.Now(), Message: msg}
-	m.Log = append(m.Log, entry)
+	logs := make([]model.LogEntry, len(m.Log), len(m.Log)+1)
+	copy(logs, m.Log)
+	m.Log = append(logs, entry)
 	if len(m.Log) > model.MaxLogEntries {
 		m.Log = m.Log[len(m.Log)-model.MaxLogEntries:]
 	}

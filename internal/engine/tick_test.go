@@ -123,6 +123,38 @@ func TestTick_OriginalNotMutated(t *testing.T) {
 	}
 }
 
+func TestBuySeeds_DoesNotMutateCallerLogBackingArray(t *testing.T) {
+	backing := make([]model.LogEntry, 1, 4)
+	backing[0] = model.LogEntry{Message: "original"}
+	exposedBacking := backing[:cap(backing)]
+	exposedBacking[1] = model.LogEntry{Message: "sentinel"}
+
+	m := model.Model{
+		Money: 20,
+		Log:   backing,
+	}
+
+	got, err := engine.BuySeeds(m)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(m.Log) != 1 {
+		t.Fatalf("original log len mutated: want 1, got %d", len(m.Log))
+	}
+	if m.Log[0].Message != "original" {
+		t.Fatalf("original log entry mutated: want %q, got %q", "original", m.Log[0].Message)
+	}
+	if exposedBacking[1].Message != "sentinel" {
+		t.Fatalf("caller backing array mutated: want %q, got %q", "sentinel", exposedBacking[1].Message)
+	}
+	if len(got.Log) != 2 {
+		t.Fatalf("new log len: want 2, got %d", len(got.Log))
+	}
+	if got.Log[1].Message != "🌱 Comprou 5 sementes" {
+		t.Fatalf("new log message: want %q, got %q", "🌱 Comprou 5 sementes", got.Log[1].Message)
+	}
+}
+
 func TestBuySeeds_SuccessDefaultsToBatchOfFive(t *testing.T) {
 	m := model.Model{Money: 20}
 	got, err := engine.BuySeeds(m)
