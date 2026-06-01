@@ -12,6 +12,16 @@ import (
 var ErrInsufficientFunds = errors.New("insufficient funds")
 
 func Tick(m model.Model) model.Model {
+	advanceRevenueWindow(&m)
+
+	if shouldAutoBuy(m) {
+		var err error
+		m, err = BuySeeds(m)
+		if err == nil {
+			m = addLog(m, fmt.Sprintf("⚙ Auto-compra: +%d sementes", m.SeedsPerPurchase))
+		}
+	}
+
 	// copia Plants para não mutar o backing array do caller
 	plants := make([]model.PlantSlot, len(m.Plants))
 	copy(plants, m.Plants)
@@ -46,6 +56,7 @@ func Tick(m model.Model) model.Model {
 	if m.AutoSellThreshold > 0 && m.Stock >= m.AutoSellThreshold {
 		earned := float64(m.Stock) * model.StockValue
 		m.Money += earned
+		recordRevenue(&m, earned)
 		m.Stock = 0
 		m = addLog(m, fmt.Sprintf("💰 Auto-venda: +$%.0f", earned))
 	}
@@ -56,6 +67,7 @@ func Tick(m model.Model) model.Model {
 		m.MoneySnapshot = m.Money
 	}
 
+	m.RecentRevenue = m.RevenueTracker.Total
 	return m
 }
 
@@ -124,6 +136,7 @@ func SellAll(m model.Model) (model.Model, float64) {
 	m = addLog(m, fmt.Sprintf("💰 Venda total: +$%.0f (%d estoques)", earned, m.Stock))
 	m.Money += earned
 	m.Stock = 0
+	recordRevenue(&m, earned)
 	return m, earned
 }
 
@@ -136,4 +149,31 @@ func SetAutoSellThreshold(m model.Model, v int) model.Model {
 		return addLog(m, "⚙ Auto-venda desativada")
 	}
 	return addLog(m, fmt.Sprintf("⚙ Auto-venda: threshold=%d", v))
+}
+
+func shouldAutoBuy(m model.Model) bool {
+	if !m.AutoBuyEnabled || m.Seeds >= m.AutoBuyMinimum {
+		return false
+	}
+	if m.AutoBuyMaxCashFraction <= 0 {
+		m.AutoBuyMaxCashFraction = model.DefaultAutoBuyMaxCashFraction
+	}
+	return model.SeedCost <= m.Money && model.SeedCost <= m.Money*m.AutoBuyMaxCashFraction
+}
+
+func advanceRevenueWindow(m *model.Model) {
+	next := (m.RevenueTracker.Cursor + 1) % len(m.RevenueTracker.Buckets)
+	m.RevenueTracker.Cursor = next
+	m.RevenueTracker.Total -= m.RevenueTracker.Buckets[next]
+	m.RevenueTracker.Buckets[next] = 0
+	if m.RevenueTracker.Total < 0 {
+		m.RevenueTracker.Total = 0
+	}
+}
+
+func recordRevenue(m *model.Model, earned float64) {
+	idx := m.RevenueTracker.Cursor
+	m.RevenueTracker.Buckets[idx] += earned
+	m.RevenueTracker.Total += earned
+	m.RecentRevenue = m.RevenueTracker.Total
 }

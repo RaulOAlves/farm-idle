@@ -377,3 +377,36 @@ func TestTick_AutoBuyUsesConfiguredMinimum(t *testing.T) {
 		t.Fatalf("money after auto-buy: want 90, got %.0f", got.Money)
 	}
 }
+
+func TestTick_AutoBuyBlockedByCashFractionGuard(t *testing.T) {
+	m := model.Model{
+		Money:                  20,
+		Seeds:                  0,
+		SeedsPerPurchase:       5,
+		AutoBuyEnabled:         true,
+		AutoBuyMinimum:         5,
+		AutoBuyMaxCashFraction: 0.30,
+		AutoSellThreshold:      999,
+		Plants:                 []model.PlantSlot{},
+	}
+
+	got := engine.Tick(m)
+	if got.Seeds != 0 {
+		t.Fatalf("seeds after blocked auto-buy: want 0, got %d", got.Seeds)
+	}
+	if got.Money != 20 {
+		t.Fatalf("money after blocked auto-buy: want 20, got %.0f", got.Money)
+	}
+}
+
+func TestTick_RecentRevenueTracksManualSell(t *testing.T) {
+	m, earned := engine.SellAll(model.Model{Stock: 4, Money: 0})
+	if earned != 20 {
+		t.Fatalf("earned: want 20, got %.0f", earned)
+	}
+
+	m = engine.Tick(m)
+	if m.RecentRevenue != 20 {
+		t.Fatalf("recent revenue after manual sell: want 20, got %.0f", m.RecentRevenue)
+	}
+}
