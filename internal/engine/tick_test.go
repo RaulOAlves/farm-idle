@@ -69,7 +69,7 @@ func TestTick_HarvestsReadyPlant(t *testing.T) {
 	}
 }
 
-func TestTick_AutoSellExcess(t *testing.T) {
+func TestTick_AutoSellSellsAllAtOrAboveThreshold(t *testing.T) {
 	m := model.Model{
 		Plants:            []model.PlantSlot{},
 		Stock:             8,
@@ -78,11 +78,11 @@ func TestTick_AutoSellExcess(t *testing.T) {
 		HarvestLevel:      1,
 	}
 	got := engine.Tick(m)
-	if got.Stock != 5 {
-		t.Errorf("stock: want 5, got %d", got.Stock)
+	if got.Stock != 0 {
+		t.Errorf("stock: want 0, got %d", got.Stock)
 	}
-	if got.Money != 15 { // 3 * 5
-		t.Errorf("money: want 15, got %.0f", got.Money)
+	if got.Money != 40 { // 8 * 5
+		t.Errorf("money: want 40, got %.0f", got.Money)
 	}
 }
 
