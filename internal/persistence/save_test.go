@@ -14,6 +14,7 @@ func TestSaveLoad_Roundtrip(t *testing.T) {
 	m := persistence.DefaultModel()
 	m.Money = 500
 	m.Seeds = 3
+	m.SeedsByCrop = map[string]int{"Alface": 1, "Tomate": 2}
 	m.Day = 7
 	m.HarvestLevel = 2
 	m.StockByCrop = map[string]int{"Alface": 2, "Tomate": 3}
@@ -35,6 +36,9 @@ func TestSaveLoad_Roundtrip(t *testing.T) {
 	}
 	if loaded.Seeds != m.Seeds {
 		t.Errorf("seeds: want %d, got %d", m.Seeds, loaded.Seeds)
+	}
+	if loaded.SeedsByCrop["Alface"] != 1 || loaded.SeedsByCrop["Tomate"] != 2 {
+		t.Errorf("seeds_by_crop: want Alface=1 Tomate=2, got %+v", loaded.SeedsByCrop)
 	}
 	if loaded.Day != m.Day {
 		t.Errorf("day: want %d, got %d", m.Day, loaded.Day)
@@ -225,5 +229,8 @@ func TestLoad_LegacySaveDefaultsAutoBuyFields(t *testing.T) {
 	}
 	if loaded.StockByCrop[model.DefaultPlantType] != 2 {
 		t.Fatalf("legacy stock_by_crop: want %s=2, got %+v", model.DefaultPlantType, loaded.StockByCrop)
+	}
+	if loaded.SeedsByCrop[model.DefaultPlantType] != 1 {
+		t.Fatalf("legacy seeds_by_crop: want %s=1, got %+v", model.DefaultPlantType, loaded.SeedsByCrop)
 	}
 }

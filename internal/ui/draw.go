@@ -86,6 +86,7 @@ func drawResourceBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 	lines := []string{
 		fmt.Sprintf("Dinheiro   $%.0f", m.Money),
 		fmt.Sprintf("Sementes   %d", m.Seeds),
+		fmt.Sprintf("Atual      %s %d", model.CropByName(m.SelectedCrop).Name, selectedCropSeedCount(m)),
 		fmt.Sprintf("Estoque    %d", m.Stock),
 		fmt.Sprintf("Valor est. $%.0f", engine.StockMarketValue(m)),
 		fmt.Sprintf("Nivel col  %d", m.HarvestLevel),
@@ -145,7 +146,7 @@ func buildActionLines(m model.Model) []string {
 	expandCost := engine.ExpandFieldCost(m.FieldSize)
 	harvestCost := engine.HarvestUpgradeCost(m.HarvestLevel)
 	lines := []string{
-		fmt.Sprintf("%s [1] Comprar semente  $%.0f", cursorMark(m, 0), model.SeedCost),
+		fmt.Sprintf("%s [1] Comprar %s    $%.0f", cursorMark(m, 0), model.CropByName(m.SelectedCrop).Name, model.SeedCost),
 		fmt.Sprintf("%s [2] Expandir campo   $%.0f", cursorMark(m, 1), expandCost),
 		fmt.Sprintf("%s [3] Upgrade col.    $%.0f", cursorMark(m, 2), harvestCost),
 		fmt.Sprintf("%s [4] Vender tudo", cursorMark(m, 3)),
@@ -270,9 +271,13 @@ func put(screen tcell.Screen, x, y int, ch rune, style tcell.Style) {
 
 func autoBuyLabel(m model.Model) string {
 	if m.AutoBuyEnabled {
-		return fmt.Sprintf("min %d", m.AutoBuyMinimum)
+		return fmt.Sprintf("min %d %s", m.AutoBuyMinimum, model.CropByName(m.SelectedCrop).Name)
 	}
 	return "off"
+}
+
+func selectedCropSeedCount(m model.Model) int {
+	return m.SeedsByCrop[model.CropByName(m.SelectedCrop).Name]
 }
 
 func focusLabel(m model.Model) string {

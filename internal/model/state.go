@@ -71,6 +71,7 @@ type Model struct {
 	// Resources
 	Money       float64
 	Seeds       int
+	SeedsByCrop map[string]int
 	Stock       int
 	StockByCrop map[string]int
 

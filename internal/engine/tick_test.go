@@ -82,6 +82,7 @@ func TestTick_HarvestsReadyPlant(t *testing.T) {
 func TestTick_SelectedCropUsesSpecificGrowTime(t *testing.T) {
 	m := model.Model{
 		Seeds:             1,
+		SeedsByCrop:       map[string]int{"Tomate": 1},
 		SelectedCrop:      "Tomate",
 		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
 		HarvestLevel:      1,
@@ -93,6 +94,32 @@ func TestTick_SelectedCropUsesSpecificGrowTime(t *testing.T) {
 	}
 	if got.Plants[0].TicksRemaining != model.CropByName("Tomate").GrowTicks {
 		t.Fatalf("ticks: want %d, got %d", model.CropByName("Tomate").GrowTicks, got.Plants[0].TicksRemaining)
+	}
+	if got.SeedsByCrop["Tomate"] != 0 {
+		t.Fatalf("tomate seeds after planting: want 0, got %d", got.SeedsByCrop["Tomate"])
+	}
+}
+
+func TestTick_ConsumesOnlySelectedCropSeeds(t *testing.T) {
+	m := model.Model{
+		Seeds:             2,
+		SeedsByCrop:       map[string]int{"Trigo": 2},
+		SelectedCrop:      "Tomate",
+		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
+		HarvestLevel:      1,
+		AutoSellThreshold: 999,
+	}
+
+	got := engine.Tick(m)
+
+	if got.Plants[0].State != model.PlantEmpty {
+		t.Fatalf("state: want empty when selected crop has no seeds, got %q", got.Plants[0].State)
+	}
+	if got.SeedsByCrop["Trigo"] != 2 {
+		t.Fatalf("trigo seeds should remain 2, got %d", got.SeedsByCrop["Trigo"])
+	}
+	if got.Seeds != 2 {
+		t.Fatalf("total seeds should remain 2, got %d", got.Seeds)
 	}
 }
 
@@ -193,8 +220,8 @@ func TestBuySeeds_DoesNotMutateCallerLogBackingArray(t *testing.T) {
 	if len(got.Log) != 2 {
 		t.Fatalf("new log len: want 2, got %d", len(got.Log))
 	}
-	if got.Log[1].Message != "🌱 Comprou 5 sementes" {
-		t.Fatalf("new log message: want %q, got %q", "🌱 Comprou 5 sementes", got.Log[1].Message)
+	if got.Log[1].Message != "🌱 Comprou 5 sementes de Trigo" {
+		t.Fatalf("new log message: want %q, got %q", "🌱 Comprou 5 sementes de Trigo", got.Log[1].Message)
 	}
 }
 
@@ -213,7 +240,7 @@ func TestBuySeeds_SuccessDefaultsToBatchOfFive(t *testing.T) {
 }
 
 func TestBuySeeds_SuccessBuysBatch(t *testing.T) {
-	m := model.Model{Money: 100, Seeds: 0, SeedsPerPurchase: 5}
+	m := model.Model{Money: 100, Seeds: 0, SeedsPerPurchase: 5, SelectedCrop: "Tomate"}
 
 	got, err := engine.BuySeeds(m)
 	if err != nil {
@@ -221,6 +248,9 @@ func TestBuySeeds_SuccessBuysBatch(t *testing.T) {
 	}
 	if got.Seeds != 5 {
 		t.Fatalf("seeds: want 5, got %d", got.Seeds)
+	}
+	if got.SeedsByCrop["Tomate"] != 5 {
+		t.Fatalf("tomate seeds: want 5, got %d", got.SeedsByCrop["Tomate"])
 	}
 	if got.Money != 90 {
 		t.Fatalf("money: want 90, got %.0f", got.Money)

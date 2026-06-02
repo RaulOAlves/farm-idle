@@ -13,6 +13,7 @@ var ErrInsufficientFunds = errors.New("insufficient funds")
 
 func Tick(m model.Model) model.Model {
 	m = normalizeStock(m)
+	m = normalizeSeeds(m)
 	advanceRevenueWindow(&m)
 
 	if shouldAutoBuy(m) {
@@ -31,9 +32,10 @@ func Tick(m model.Model) model.Model {
 	for i := range m.Plants {
 		switch m.Plants[i].State {
 		case model.PlantEmpty:
-			if m.Seeds > 0 {
-				crop := model.CropByName(m.SelectedCrop)
-				m.Seeds--
+			crop := model.CropByName(m.SelectedCrop)
+			if m.SeedsByCrop[crop.Name] > 0 {
+				m.SeedsByCrop[crop.Name]--
+				m.Seeds = totalSeeds(m.SeedsByCrop)
 				m.Plants[i].State = model.PlantPlanted
 				m.Plants[i].TicksRemaining = crop.GrowTicks
 				m.Plants[i].PlantType = crop.Name
@@ -94,15 +96,18 @@ func HarvestUpgradeCost(level int) float64 {
 }
 
 func BuySeeds(m model.Model) (model.Model, error) {
+	m = normalizeSeeds(m)
 	if m.Money < model.SeedCost {
 		return m, ErrInsufficientFunds
 	}
 	if m.SeedsPerPurchase <= 0 {
 		m.SeedsPerPurchase = 5
 	}
+	crop := model.CropByName(m.SelectedCrop)
 	m.Money -= model.SeedCost
-	m.Seeds += m.SeedsPerPurchase
-	return addLog(m, fmt.Sprintf("🌱 Comprou %d sementes", m.SeedsPerPurchase)), nil
+	m.SeedsByCrop[crop.Name] += m.SeedsPerPurchase
+	m.Seeds = totalSeeds(m.SeedsByCrop)
+	return addLog(m, fmt.Sprintf("🌱 Comprou %d sementes de %s", m.SeedsPerPurchase, crop.Name)), nil
 }
 
 func ExpandField(m model.Model) (model.Model, error) {
@@ -204,7 +209,7 @@ func harvestSlot(m model.Model, i int) model.Model {
 }
 
 func shouldAutoBuy(m model.Model) bool {
-	if !m.AutoBuyEnabled || m.Seeds >= m.AutoBuyMinimum {
+	if !m.AutoBuyEnabled || selectedCropSeeds(m) >= m.AutoBuyMinimum {
 		return false
 	}
 	if m.AutoBuyMaxCashFraction <= 0 {
@@ -243,6 +248,34 @@ func normalizeStock(m model.Model) model.Model {
 	m.StockByCrop = stocks
 	m.Stock = totalStock(stocks)
 	return m
+}
+
+func normalizeSeeds(m model.Model) model.Model {
+	seeds := make(map[string]int, len(m.SeedsByCrop)+1)
+	for crop, qty := range m.SeedsByCrop {
+		if qty > 0 {
+			seeds[model.CropByName(crop).Name] += qty
+		}
+	}
+	if len(seeds) == 0 && m.Seeds > 0 {
+		seeds[model.DefaultPlantType] = m.Seeds
+	}
+	m.SeedsByCrop = seeds
+	m.Seeds = totalSeeds(seeds)
+	return m
+}
+
+func selectedCropSeeds(m model.Model) int {
+	crop := model.CropByName(m.SelectedCrop)
+	return m.SeedsByCrop[crop.Name]
+}
+
+func totalSeeds(seeds map[string]int) int {
+	total := 0
+	for _, qty := range seeds {
+		total += qty
+	}
+	return total
 }
 
 func totalStock(stocks map[string]int) int {

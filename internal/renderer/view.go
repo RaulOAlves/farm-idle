@@ -124,7 +124,7 @@ func rightColumnWidth(width int) int {
 func renderStatusLine(m model.Model) string {
 	autoBuy := "off"
 	if m.AutoBuyEnabled {
-		autoBuy = fmt.Sprintf("min %d", m.AutoBuyMinimum)
+		autoBuy = fmt.Sprintf("min %d %s", m.AutoBuyMinimum, model.CropByName(m.SelectedCrop).Name)
 	}
 
 	focus := "menu"
@@ -140,6 +140,7 @@ func renderResources(m model.Model) string {
 		panelTitle("RECURSOS"),
 		fmt.Sprintf("💰 Dinheiro:  $%.0f", m.Money),
 		fmt.Sprintf("🌱 Sementes:  %d", m.Seeds),
+		fmt.Sprintf("🌿 Atual:     %s %d", model.CropByName(m.SelectedCrop).Name, selectedCropSeedCount(m)),
 		fmt.Sprintf("📦 Estoque:   %d", m.Stock),
 		fmt.Sprintf("📈 Nível col: %d", m.HarvestLevel),
 		fmt.Sprintf("⚙ Lote seed:  %d", m.SeedsPerPurchase),
@@ -285,7 +286,7 @@ func buildActions(m model.Model) []actionItem {
 	}
 
 	return []actionItem{
-		{fmt.Sprintf("[1] Comprar semente     $%.0f", model.SeedCost), m.Money >= model.SeedCost},
+		{fmt.Sprintf("[1] Comprar %-10s $%.0f", model.CropByName(m.SelectedCrop).Name, model.SeedCost), m.Money >= model.SeedCost},
 		{fmt.Sprintf("[2] Expandir campo      $%.0f", expandCost), m.Money >= expandCost},
 		{fmt.Sprintf("[3] Upgrade colheita    $%.0f", harvestCost), m.Money >= harvestCost},
 		{"[4] Vender tudo          —", true},
@@ -449,6 +450,10 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func selectedCropSeedCount(m model.Model) int {
+	return m.SeedsByCrop[model.CropByName(m.SelectedCrop).Name]
 }
 
 func panelTitle(label string) string {
