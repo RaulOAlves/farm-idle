@@ -2,6 +2,7 @@
 package persistence_test
 
 import (
+	"farm-idle/internal/model"
 	"farm-idle/internal/persistence"
 	"os"
 	"path/filepath"
@@ -108,5 +109,89 @@ func TestLoad_LegacyZeroSnapshotUsesCurrentMoney(t *testing.T) {
 	}
 	if m.MoneySnapshot != m.Money {
 		t.Errorf("money_snapshot: want %.0f, got %.0f", m.Money, m.MoneySnapshot)
+	}
+}
+
+func TestSaveLoad_RoundtripAutoBuyAndRevenueTracker(t *testing.T) {
+	m := persistence.DefaultModel()
+	m.SeedsPerPurchase = 12
+	m.AutoBuyEnabled = true
+	m.AutoBuyMinimum = 8
+	m.AutoBuyMaxCashFraction = 0.45
+	m.RevenueTracker = model.RevenueTracker{
+		Buckets: [model.TicksPerDay]float64{0: 10, 3: 7.5, 59: 2.5},
+		Cursor:  3,
+		Total:   20,
+	}
+	m.RecentRevenue = 20
+
+	path := filepath.Join(t.TempDir(), "save.json")
+
+	if err := persistence.Save(m, path); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	loaded, err := persistence.Load(path)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if loaded.SeedsPerPurchase != m.SeedsPerPurchase {
+		t.Fatalf("seeds_per_purchase: want %d, got %d", m.SeedsPerPurchase, loaded.SeedsPerPurchase)
+	}
+	if loaded.AutoBuyEnabled != m.AutoBuyEnabled {
+		t.Fatalf("auto_buy_enabled: want %t, got %t", m.AutoBuyEnabled, loaded.AutoBuyEnabled)
+	}
+	if loaded.AutoBuyMinimum != m.AutoBuyMinimum {
+		t.Fatalf("auto_buy_minimum: want %d, got %d", m.AutoBuyMinimum, loaded.AutoBuyMinimum)
+	}
+	if loaded.AutoBuyMaxCashFraction != m.AutoBuyMaxCashFraction {
+		t.Fatalf("auto_buy_max_cash_fraction: want %.2f, got %.2f", m.AutoBuyMaxCashFraction, loaded.AutoBuyMaxCashFraction)
+	}
+	if loaded.RevenueTracker != m.RevenueTracker {
+		t.Fatalf("revenue_tracker: want %+v, got %+v", m.RevenueTracker, loaded.RevenueTracker)
+	}
+	if loaded.RecentRevenue != m.RecentRevenue {
+		t.Fatalf("recent_revenue: want %.2f, got %.2f", m.RecentRevenue, loaded.RecentRevenue)
+	}
+}
+
+func TestLoad_LegacySaveDefaultsAutoBuyFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy-save.json")
+	content := `{
+  "money": 125,
+  "seeds": 1,
+  "stock": 2,
+  "field_size": 10,
+  "plants": [],
+  "harvest_level": 1,
+  "auto_sell_threshold": 5,
+  "day": 3,
+  "tick_count": 9,
+  "last_save": "2026-05-31T12:00:00Z",
+  "money_snapshot": 90
+}`
+
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	loaded, err := persistence.Load(path)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if loaded.SeedsPerPurchase != 5 {
+		t.Fatalf("seeds_per_purchase: want 5, got %d", loaded.SeedsPerPurchase)
+	}
+	if loaded.AutoBuyMinimum != 5 {
+		t.Fatalf("auto_buy_minimum: want 5, got %d", loaded.AutoBuyMinimum)
+	}
+	if loaded.AutoBuyMaxCashFraction != model.DefaultAutoBuyMaxCashFraction {
+		t.Fatalf(
+			"auto_buy_max_cash_fraction: want %.2f, got %.2f",
+			model.DefaultAutoBuyMaxCashFraction,
+			loaded.AutoBuyMaxCashFraction,
+		)
 	}
 }

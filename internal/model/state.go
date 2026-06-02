@@ -87,17 +87,3 @@ type Model struct {
 	InputBuffer   string
 	OfflineReport *OfflineResult
 }
-
-type SaveData struct {
-	Money             float64     `json:"money"`
-	Seeds             int         `json:"seeds"`
-	Stock             int         `json:"stock"`
-	FieldSize         int         `json:"field_size"`
-	Plants            []PlantSlot `json:"plants"`
-	HarvestLevel      int         `json:"harvest_level"`
-	AutoSellThreshold int         `json:"auto_sell_threshold"`
-	Day               int         `json:"day"`
-	TickCount         int         `json:"tick_count"`
-	LastSave          time.Time   `json:"last_save"`
-	MoneySnapshot     float64     `json:"money_snapshot"`
-}
