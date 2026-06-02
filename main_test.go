@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"farm-idle/internal/input"
 	"farm-idle/internal/model"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -12,6 +13,7 @@ func TestHandleNormalMode_Action6EntersInputMode(t *testing.T) {
 		state: model.Model{
 			AutoBuyMinimum: 7,
 		},
+		keys: input.DefaultKeyMap,
 	}
 
 	got, _ := a.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'6'}})
@@ -25,6 +27,23 @@ func TestHandleNormalMode_Action6EntersInputMode(t *testing.T) {
 	}
 	if next.state.Cursor != 5 {
 		t.Fatalf("cursor: want 5, got %d", next.state.Cursor)
+	}
+}
+
+func TestHandleNormalMode_DownReachesAction6(t *testing.T) {
+	a := AppModel{
+		state: model.Model{},
+		keys:  input.DefaultKeyMap,
+	}
+
+	var got tea.Model
+	for i := 0; i < 6; i++ {
+		got, _ = a.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+		a = got.(AppModel)
+	}
+
+	if a.state.Cursor != 5 {
+		t.Fatalf("cursor: want 5, got %d", a.state.Cursor)
 	}
 }
 

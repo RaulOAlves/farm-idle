@@ -12,6 +12,7 @@ type KeyMap struct {
 	Action3 key.Binding
 	Action4 key.Binding
 	Action5 key.Binding
+	Action6 key.Binding
 	Quit    key.Binding
 }
 
@@ -37,6 +38,7 @@ var DefaultKeyMap = KeyMap{
 	Action3: key.NewBinding(key.WithKeys("3")),
 	Action4: key.NewBinding(key.WithKeys("4")),
 	Action5: key.NewBinding(key.WithKeys("5")),
+	Action6: key.NewBinding(key.WithKeys("6")),
 	Quit: key.NewBinding(
 		key.WithKeys("q"),
 		key.WithHelp("q", "salvar e sair"),

@@ -92,7 +92,7 @@ func (a AppModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.state.Cursor--
 		}
 	case key.Matches(msg, a.keys.Down):
-		if a.state.Cursor < 4 {
+		if a.state.Cursor < 5 {
 			a.state.Cursor++
 		}
 	case key.Matches(msg, a.keys.Select):
@@ -107,7 +107,7 @@ func (a AppModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a = a.executeAction(3)
 	case key.Matches(msg, a.keys.Action5):
 		a = a.executeAction(4)
-	case msg.String() == "6":
+	case key.Matches(msg, a.keys.Action6):
 		a.state.InputMode = true
 		a.state.Cursor = 5
 		a.state.InputBuffer = strconv.Itoa(a.state.AutoBuyMinimum)
