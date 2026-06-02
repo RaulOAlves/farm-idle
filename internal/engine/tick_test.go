@@ -32,7 +32,7 @@ func TestTick_PlantsSeeds(t *testing.T) {
 
 func TestTick_PlantGrowsFromPlanted(t *testing.T) {
 	m := model.Model{
-		Plants:            []model.PlantSlot{{State: model.PlantPlanted, TicksRemaining: 5}},
+		Plants:            []model.PlantSlot{{State: model.PlantPlanted, TicksRemaining: 21, PlantType: model.DefaultPlantType}},
 		HarvestLevel:      1,
 		AutoSellThreshold: 999,
 	}
@@ -40,14 +40,14 @@ func TestTick_PlantGrowsFromPlanted(t *testing.T) {
 	if got.Plants[0].State != model.PlantGrowing {
 		t.Errorf("state: want %q, got %q", model.PlantGrowing, got.Plants[0].State)
 	}
-	if got.Plants[0].TicksRemaining != 4 {
-		t.Errorf("ticks: want 4, got %d", got.Plants[0].TicksRemaining)
+	if got.Plants[0].TicksRemaining != 20 {
+		t.Errorf("ticks: want 20, got %d", got.Plants[0].TicksRemaining)
 	}
 }
 
 func TestTick_GrowingBecomesReady(t *testing.T) {
 	m := model.Model{
-		Plants:            []model.PlantSlot{{State: model.PlantGrowing, TicksRemaining: 1}},
+		Plants:            []model.PlantSlot{{State: model.PlantGrowing, TicksRemaining: 11, PlantType: model.DefaultPlantType}},
 		HarvestLevel:      1,
 		AutoSellThreshold: 999,
 	}
@@ -82,33 +82,33 @@ func TestTick_HarvestsReadyPlant(t *testing.T) {
 func TestTick_SelectedCropUsesSpecificGrowTime(t *testing.T) {
 	m := model.Model{
 		Seeds:             1,
-		SelectedCrop:      "Milho",
+		SelectedCrop:      "Tomate",
 		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
 		HarvestLevel:      1,
 		AutoSellThreshold: 999,
 	}
 	got := engine.Tick(m)
-	if got.Plants[0].PlantType != "Milho" {
-		t.Fatalf("plant type: want Milho, got %q", got.Plants[0].PlantType)
+	if got.Plants[0].PlantType != "Tomate" {
+		t.Fatalf("plant type: want Tomate, got %q", got.Plants[0].PlantType)
 	}
-	if got.Plants[0].TicksRemaining != model.CropByName("Milho").GrowTicks {
-		t.Fatalf("ticks: want %d, got %d", model.CropByName("Milho").GrowTicks, got.Plants[0].TicksRemaining)
+	if got.Plants[0].TicksRemaining != model.CropByName("Tomate").GrowTicks {
+		t.Fatalf("ticks: want %d, got %d", model.CropByName("Tomate").GrowTicks, got.Plants[0].TicksRemaining)
 	}
 }
 
 func TestTick_HarvestsCropSpecificYield(t *testing.T) {
 	m := model.Model{
-		Plants:            []model.PlantSlot{{State: model.PlantReady, PlantType: "Milho"}},
+		Plants:            []model.PlantSlot{{State: model.PlantReady, PlantType: "Tomate"}},
 		HarvestLevel:      2,
 		AutoSellThreshold: 999,
 	}
 	got := engine.Tick(m)
-	want := model.CropByName("Milho").Yield * 2
+	want := model.CropByName("Tomate").Yield * 2
 	if got.Stock != want {
 		t.Fatalf("stock: want %d, got %d", want, got.Stock)
 	}
-	if got.StockByCrop["Milho"] != want {
-		t.Fatalf("stock by crop: want %d, got %d", want, got.StockByCrop["Milho"])
+	if got.StockByCrop["Tomate"] != want {
+		t.Fatalf("stock by crop: want %d, got %d", want, got.StockByCrop["Tomate"])
 	}
 }
 
@@ -321,11 +321,11 @@ func TestSellAll_UsesCropSpecificPrices(t *testing.T) {
 	m := model.Model{
 		StockByCrop: map[string]int{
 			"Alface": 2,
-			"Milho":  3,
+			"Tomate": 3,
 		},
 	}
 	got, earned := engine.SellAll(m)
-	want := 2*model.CropByName("Alface").SellPrice + 3*model.CropByName("Milho").SellPrice
+	want := 2*model.CropByName("Alface").SellPrice + 3*model.CropByName("Tomate").SellPrice
 	if earned != want {
 		t.Fatalf("earned: want %.0f, got %.0f", want, earned)
 	}

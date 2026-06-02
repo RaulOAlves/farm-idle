@@ -39,30 +39,11 @@ func Tick(m model.Model) model.Model {
 				m.Plants[i].PlantType = crop.Name
 			}
 		case model.PlantPlanted:
-			m.Plants[i].State = model.PlantGrowing
-			m.Plants[i].TicksRemaining--
-			if m.Plants[i].TicksRemaining <= 0 {
-				m.Plants[i].State = model.PlantReady
-				m.Plants[i].TicksRemaining = 0
-			}
+			m, i = advancePlantedSlot(m, i)
 		case model.PlantGrowing:
-			m.Plants[i].TicksRemaining--
-			if m.Plants[i].TicksRemaining <= 0 {
-				m.Plants[i].State = model.PlantReady
-				m.Plants[i].TicksRemaining = 0
-			}
+			m, i = advancePlantedSlot(m, i)
 		case model.PlantReady:
-			crop := model.CropByName(m.Plants[i].PlantType)
-			yield := crop.Yield
-			if yield <= 0 {
-				yield = 1
-			}
-			harvested := yield * m.HarvestLevel
-			m.StockByCrop[crop.Name] += harvested
-			m.Stock = totalStock(m.StockByCrop)
-			m.Plants[i].State = model.PlantEmpty
-			m.Plants[i].PlantType = ""
-			m = addLog(m, fmt.Sprintf("🌾 Colheita %s: +%d estoques", crop.Name, harvested))
+			m, i = advancePlantedSlot(m, i)
 		}
 	}
 
@@ -178,6 +159,48 @@ func CycleSelectedCrop(m model.Model) model.Model {
 	next := model.NextCrop(m.SelectedCrop)
 	m.SelectedCrop = next.Name
 	return addLog(m, fmt.Sprintf("🌿 Cultura ativa: %s (%ds)", next.Name, next.GrowTicks))
+}
+
+func advancePlantedSlot(m model.Model, i int) (model.Model, int) {
+	m.Plants[i].TicksRemaining--
+	if m.Plants[i].TicksRemaining <= 0 {
+		return harvestSlot(m, i), i
+	}
+
+	crop := model.CropByName(m.Plants[i].PlantType)
+	m.Plants[i].State = growthStage(crop, m.Plants[i].TicksRemaining)
+	return m, i
+}
+
+func growthStage(crop model.CropProfile, ticksRemaining int) model.PlantState {
+	if ticksRemaining <= 0 {
+		return model.PlantReady
+	}
+	firstStageEnd := (crop.GrowTicks * 2) / 3
+	secondStageEnd := crop.GrowTicks / 3
+	switch {
+	case ticksRemaining > firstStageEnd:
+		return model.PlantPlanted
+	case ticksRemaining > secondStageEnd:
+		return model.PlantGrowing
+	default:
+		return model.PlantReady
+	}
+}
+
+func harvestSlot(m model.Model, i int) model.Model {
+	crop := model.CropByName(m.Plants[i].PlantType)
+	yield := crop.Yield
+	if yield <= 0 {
+		yield = 1
+	}
+	harvested := yield * m.HarvestLevel
+	m.StockByCrop[crop.Name] += harvested
+	m.Stock = totalStock(m.StockByCrop)
+	m.Plants[i].State = model.PlantEmpty
+	m.Plants[i].TicksRemaining = 0
+	m.Plants[i].PlantType = ""
+	return addLog(m, fmt.Sprintf("🌾 Colheita %s: +%d estoques", crop.Name, harvested))
 }
 
 func shouldAutoBuy(m model.Model) bool {

@@ -16,7 +16,7 @@ func TestSaveLoad_Roundtrip(t *testing.T) {
 	m.Seeds = 3
 	m.Day = 7
 	m.HarvestLevel = 2
-	m.StockByCrop = map[string]int{"Alface": 2, "Milho": 3}
+	m.StockByCrop = map[string]int{"Alface": 2, "Tomate": 3}
 	m.Stock = 5
 
 	path := filepath.Join(t.TempDir(), "save.json")
@@ -45,8 +45,8 @@ func TestSaveLoad_Roundtrip(t *testing.T) {
 	if loaded.Stock != 5 {
 		t.Errorf("stock: want 5, got %d", loaded.Stock)
 	}
-	if loaded.StockByCrop["Alface"] != 2 || loaded.StockByCrop["Milho"] != 3 {
-		t.Errorf("stock_by_crop: want Alface=2 Milho=3, got %+v", loaded.StockByCrop)
+	if loaded.StockByCrop["Alface"] != 2 || loaded.StockByCrop["Tomate"] != 3 {
+		t.Errorf("stock_by_crop: want Alface=2 Tomate=3, got %+v", loaded.StockByCrop)
 	}
 	if loaded.FieldSize != m.FieldSize {
 		t.Errorf("field_size: want %d, got %d", m.FieldSize, loaded.FieldSize)
@@ -127,7 +127,7 @@ func TestSaveLoad_RoundtripAutoBuyAndRevenueTracker(t *testing.T) {
 	m.AutoBuyEnabled = true
 	m.AutoBuyMinimum = 8
 	m.AutoBuyMaxCashFraction = 0.45
-	m.SelectedCrop = "Milho"
+	m.SelectedCrop = "Tomate"
 	m.RevenueTracker = model.RevenueTracker{
 		Buckets: [model.TicksPerDay]float64{0: 10, 3: 7.5, 59: 2.5},
 		Cursor:  3,

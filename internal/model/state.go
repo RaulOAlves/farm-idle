@@ -112,7 +112,7 @@ type Model struct {
 var cropCatalog = []CropProfile{
 	{Name: "Alface", GrowTicks: 18, Yield: 1, SellPrice: 3},
 	{Name: "Trigo", GrowTicks: GrowTicks, Yield: 1, SellPrice: StockValue},
-	{Name: "Milho", GrowTicks: 42, Yield: 2, SellPrice: 4},
+	{Name: "Tomate", GrowTicks: 42, Yield: 1, SellPrice: 9},
 }
 
 func CropCatalog() []CropProfile {
