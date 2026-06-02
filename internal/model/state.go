@@ -12,6 +12,7 @@ type CropProfile struct {
 	GrowTicks int
 	Yield     int
 	SellPrice float64
+	SeedCost  float64
 }
 
 // Plant states
@@ -111,9 +112,9 @@ type Model struct {
 }
 
 var cropCatalog = []CropProfile{
-	{Name: "Alface", GrowTicks: 18, Yield: 1, SellPrice: 3},
-	{Name: "Trigo", GrowTicks: GrowTicks, Yield: 1, SellPrice: StockValue},
-	{Name: "Tomate", GrowTicks: 42, Yield: 1, SellPrice: 9},
+	{Name: "Alface", GrowTicks: 18, Yield: 1, SellPrice: 3, SeedCost: 10},
+	{Name: "Trigo", GrowTicks: GrowTicks, Yield: 1, SellPrice: StockValue, SeedCost: 16},
+	{Name: "Tomate", GrowTicks: 42, Yield: 1, SellPrice: 9, SeedCost: 28},
 }
 
 func CropCatalog() []CropProfile {

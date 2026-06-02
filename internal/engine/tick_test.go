@@ -226,7 +226,7 @@ func TestBuySeeds_DoesNotMutateCallerLogBackingArray(t *testing.T) {
 }
 
 func TestBuySeeds_SuccessDefaultsToBatchOfFive(t *testing.T) {
-	m := model.Model{Money: 20}
+	m := model.Model{Money: 20, SelectedCrop: "Alface"}
 	got, err := engine.BuySeeds(m)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -240,7 +240,7 @@ func TestBuySeeds_SuccessDefaultsToBatchOfFive(t *testing.T) {
 }
 
 func TestBuySeeds_SuccessBuysBatch(t *testing.T) {
-	m := model.Model{Money: 100, Seeds: 0, SeedsPerPurchase: 5, SelectedCrop: "Tomate"}
+	m := model.Model{Money: 100, Seeds: 0, SeedsPerPurchase: 5, SelectedCrop: "Alface"}
 
 	got, err := engine.BuySeeds(m)
 	if err != nil {
@@ -249,11 +249,28 @@ func TestBuySeeds_SuccessBuysBatch(t *testing.T) {
 	if got.Seeds != 5 {
 		t.Fatalf("seeds: want 5, got %d", got.Seeds)
 	}
-	if got.SeedsByCrop["Tomate"] != 5 {
-		t.Fatalf("tomate seeds: want 5, got %d", got.SeedsByCrop["Tomate"])
+	if got.SeedsByCrop["Alface"] != 5 {
+		t.Fatalf("alface seeds: want 5, got %d", got.SeedsByCrop["Alface"])
 	}
 	if got.Money != 90 {
 		t.Fatalf("money: want 90, got %.0f", got.Money)
+	}
+}
+
+func TestBuySeeds_UsesSelectedCropCost(t *testing.T) {
+	m := model.Model{Money: 100, SeedsPerPurchase: 5, SelectedCrop: "Tomate"}
+
+	got, err := engine.BuySeeds(m)
+	if err != nil {
+		t.Fatalf("BuySeeds returned error: %v", err)
+	}
+
+	wantMoney := 100 - model.CropByName("Tomate").SeedCost
+	if got.Money != wantMoney {
+		t.Fatalf("money: want %.0f, got %.0f", wantMoney, got.Money)
+	}
+	if got.SeedsByCrop["Tomate"] != 5 {
+		t.Fatalf("tomate seeds: want 5, got %d", got.SeedsByCrop["Tomate"])
 	}
 }
 
@@ -465,7 +482,9 @@ func TestTick_AutoBuyUsesConfiguredMinimum(t *testing.T) {
 	m := model.Model{
 		Money:                  100,
 		Seeds:                  4,
+		SeedsByCrop:            map[string]int{"Alface": 4},
 		SeedsPerPurchase:       5,
+		SelectedCrop:           "Alface",
 		AutoBuyEnabled:         true,
 		AutoBuyMinimum:         5,
 		AutoBuyMaxCashFraction: 0.30,

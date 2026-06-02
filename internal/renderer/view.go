@@ -144,6 +144,7 @@ func renderResources(m model.Model) string {
 		fmt.Sprintf("📦 Estoque:   %d", m.Stock),
 		fmt.Sprintf("📈 Nível col: %d", m.HarvestLevel),
 		fmt.Sprintf("⚙ Lote seed:  %d", m.SeedsPerPurchase),
+		fmt.Sprintf("💸 Custo:     $%.0f", seedCostForSelectedCrop(m)),
 	}
 
 	return strings.Join(lines, "\n")
@@ -286,7 +287,7 @@ func buildActions(m model.Model) []actionItem {
 	}
 
 	return []actionItem{
-		{fmt.Sprintf("[1] Comprar %-10s $%.0f", model.CropByName(m.SelectedCrop).Name, model.SeedCost), m.Money >= model.SeedCost},
+		{fmt.Sprintf("[1] Comprar %-10s $%.0f", model.CropByName(m.SelectedCrop).Name, seedCostForSelectedCrop(m)), m.Money >= seedCostForSelectedCrop(m)},
 		{fmt.Sprintf("[2] Expandir campo      $%.0f", expandCost), m.Money >= expandCost},
 		{fmt.Sprintf("[3] Upgrade colheita    $%.0f", harvestCost), m.Money >= harvestCost},
 		{"[4] Vender tudo          —", true},
@@ -454,6 +455,14 @@ func maxInt(a, b int) int {
 
 func selectedCropSeedCount(m model.Model) int {
 	return m.SeedsByCrop[model.CropByName(m.SelectedCrop).Name]
+}
+
+func seedCostForSelectedCrop(m model.Model) float64 {
+	cost := model.CropByName(m.SelectedCrop).SeedCost
+	if cost <= 0 {
+		return model.SeedCost
+	}
+	return cost
 }
 
 func panelTitle(label string) string {

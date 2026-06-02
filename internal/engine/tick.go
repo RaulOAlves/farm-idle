@@ -97,14 +97,18 @@ func HarvestUpgradeCost(level int) float64 {
 
 func BuySeeds(m model.Model) (model.Model, error) {
 	m = normalizeSeeds(m)
-	if m.Money < model.SeedCost {
+	crop := model.CropByName(m.SelectedCrop)
+	cost := crop.SeedCost
+	if cost <= 0 {
+		cost = model.SeedCost
+	}
+	if m.Money < cost {
 		return m, ErrInsufficientFunds
 	}
 	if m.SeedsPerPurchase <= 0 {
 		m.SeedsPerPurchase = 5
 	}
-	crop := model.CropByName(m.SelectedCrop)
-	m.Money -= model.SeedCost
+	m.Money -= cost
 	m.SeedsByCrop[crop.Name] += m.SeedsPerPurchase
 	m.Seeds = totalSeeds(m.SeedsByCrop)
 	return addLog(m, fmt.Sprintf("🌱 Comprou %d sementes de %s", m.SeedsPerPurchase, crop.Name)), nil
@@ -215,7 +219,11 @@ func shouldAutoBuy(m model.Model) bool {
 	if m.AutoBuyMaxCashFraction <= 0 {
 		m.AutoBuyMaxCashFraction = model.DefaultAutoBuyMaxCashFraction
 	}
-	return model.SeedCost <= m.Money && model.SeedCost <= m.Money*m.AutoBuyMaxCashFraction
+	cost := model.CropByName(m.SelectedCrop).SeedCost
+	if cost <= 0 {
+		cost = model.SeedCost
+	}
+	return cost <= m.Money && cost <= m.Money*m.AutoBuyMaxCashFraction
 }
 
 func advanceRevenueWindow(m *model.Model) {
