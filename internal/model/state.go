@@ -25,7 +25,7 @@ const (
 	GrowTicks                             = 30
 	SeedCost                      float64 = 10
 	FieldExpandBaseCost           float64 = 100
-	HarvestUpgradeCost            float64 = 250
+	HarvestUpgradeBaseCost        float64 = 250
 	StockValue                    float64 = 5
 	DefaultAutoSellThreshold              = 5
 	DefaultAutoBuyMaxCashFraction         = 0.30

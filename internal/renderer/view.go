@@ -28,32 +28,36 @@ func View(m model.Model) string {
 		return outerStyle.Width(contentWidth).Render(renderOfflineReport(*m.OfflineReport))
 	}
 
-	mainBlock := renderMainContent(m, contentWidth)
 	sections := []string{
 		boldStyle.Render(fmt.Sprintf("FARM IDLE v0.1  —  Dia %d", m.Day)),
 		renderStatusLine(m),
 		sep(contentWidth),
-		mainBlock,
-		sep(contentWidth),
-		renderActions(m),
-		sep(contentWidth),
-		renderLog(m),
+	}
+
+	if contentWidth >= 130 {
+		sections = append(sections, renderWideDashboard(m, contentWidth))
+	} else {
+		sections = append(sections,
+			renderMainContent(m, contentWidth),
+			sep(contentWidth),
+			renderActions(m),
+			sep(contentWidth),
+			renderLog(m),
+		)
 	}
 
 	return outerStyle.Width(contentWidth).Render(strings.Join(sections, "\n"))
 }
 
 func contentWidth(m model.Model) int {
-	switch {
-	case m.ViewWidth >= 140:
-		return 132
-	case m.ViewWidth >= 100:
-		return m.ViewWidth - 6
-	case m.ViewWidth >= 72:
-		return m.ViewWidth - 4
-	default:
+	if m.ViewWidth <= 0 {
 		return 68
 	}
+	width := m.ViewWidth - 4
+	if width < 68 {
+		return 68
+	}
+	return width
 }
 
 func sep(width int) string {
@@ -76,6 +80,27 @@ func renderMainContent(m model.Model, width int) string {
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+}
+
+func renderWideDashboard(m model.Model, width int) string {
+	leftWidth := maxInt(28, width/5)
+	rightWidth := maxInt(34, width/4)
+	centerWidth := width - leftWidth - rightWidth - 10
+
+	left := panelStyle.Width(leftWidth).Render(strings.Join([]string{
+		renderResources(m),
+		"",
+		renderSelectedSlot(m),
+	}, "\n"))
+	center := panelStyle.Width(centerWidth).Render(renderField(m))
+	right := panelStyle.Width(rightWidth).Render(strings.Join([]string{
+		renderActions(m),
+		"",
+		sep(rightWidth),
+		renderLog(m),
+	}, "\n"))
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", center, "  ", right)
 }
 
 func leftColumnWidth(width int) int {
@@ -244,6 +269,7 @@ type actionItem struct {
 
 func buildActions(m model.Model) []actionItem {
 	expandCost := engine.ExpandFieldCost(m.FieldSize)
+	harvestCost := engine.HarvestUpgradeCost(m.HarvestLevel)
 	label5 := fmt.Sprintf("[5] Config auto-venda  (atual: %d)", m.AutoSellThreshold)
 	if m.InputMode && m.Cursor != 5 {
 		label5 = fmt.Sprintf("[5] Novo threshold: %s_", m.InputBuffer)
@@ -256,7 +282,7 @@ func buildActions(m model.Model) []actionItem {
 	return []actionItem{
 		{fmt.Sprintf("[1] Comprar semente     $%.0f", model.SeedCost), m.Money >= model.SeedCost},
 		{fmt.Sprintf("[2] Expandir campo      $%.0f", expandCost), m.Money >= expandCost},
-		{fmt.Sprintf("[3] Upgrade colheita    $%.0f", model.HarvestUpgradeCost), m.Money >= model.HarvestUpgradeCost},
+		{fmt.Sprintf("[3] Upgrade colheita    $%.0f", harvestCost), m.Money >= harvestCost},
 		{"[4] Vender tudo          —", true},
 		{label5, true},
 		{label6, true},
@@ -399,6 +425,8 @@ func plantStateLabel(state model.PlantState) string {
 
 func gridCols(m model.Model) int {
 	switch {
+	case m.ViewWidth >= 150:
+		return 8
 	case m.ViewWidth >= 120:
 		return 6
 	case m.ViewWidth >= 90:
@@ -406,4 +434,11 @@ func gridCols(m model.Model) int {
 	default:
 		return 4
 	}
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

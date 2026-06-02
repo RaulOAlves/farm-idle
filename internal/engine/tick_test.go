@@ -257,6 +257,15 @@ func TestUpgradeHarvest_Success(t *testing.T) {
 	}
 }
 
+func TestHarvestUpgradeCost_ScalesWithLevel(t *testing.T) {
+	if got := engine.HarvestUpgradeCost(1); got != 250 {
+		t.Fatalf("level 1 cost: want 250, got %.0f", got)
+	}
+	if got := engine.HarvestUpgradeCost(3); got != 750 {
+		t.Fatalf("level 3 cost: want 750, got %.0f", got)
+	}
+}
+
 func TestSellAll_SellsStock(t *testing.T) {
 	m := model.Model{Stock: 4, Money: 0}
 	got, earned := engine.SellAll(m)

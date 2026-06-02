@@ -95,6 +95,14 @@ func ExpandFieldCost(fieldSize int) float64 {
 	return model.FieldExpandBaseCost * float64(multiplier)
 }
 
+// HarvestUpgradeCost cresce por nível para segurar aceleração econômica cedo demais.
+func HarvestUpgradeCost(level int) float64 {
+	if level < 1 {
+		level = 1
+	}
+	return model.HarvestUpgradeBaseCost * float64(level)
+}
+
 func BuySeeds(m model.Model) (model.Model, error) {
 	if m.Money < model.SeedCost {
 		return m, ErrInsufficientFunds
@@ -124,12 +132,13 @@ func ExpandField(m model.Model) (model.Model, error) {
 }
 
 func UpgradeHarvest(m model.Model) (model.Model, error) {
-	if m.Money < model.HarvestUpgradeCost {
+	cost := HarvestUpgradeCost(m.HarvestLevel)
+	if m.Money < cost {
 		return m, ErrInsufficientFunds
 	}
-	m.Money -= model.HarvestUpgradeCost
+	m.Money -= cost
 	m.HarvestLevel++
-	return addLog(m, fmt.Sprintf("📈 Colheita nível %d", m.HarvestLevel)), nil
+	return addLog(m, fmt.Sprintf("📈 Colheita nível %d ($%.0f)", m.HarvestLevel, cost)), nil
 }
 
 func SellAll(m model.Model) (model.Model, float64) {
