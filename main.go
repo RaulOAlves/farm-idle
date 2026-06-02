@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"farm-idle/internal/engine"
@@ -106,6 +107,10 @@ func (a AppModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a = a.executeAction(3)
 	case key.Matches(msg, a.keys.Action5):
 		a = a.executeAction(4)
+	case msg.String() == "6":
+		a.state.InputMode = true
+		a.state.Cursor = 5
+		a.state.InputBuffer = strconv.Itoa(a.state.AutoBuyMinimum)
 	case key.Matches(msg, a.keys.Quit):
 		a.state.LastSave = time.Now()
 		_ = persistence.Save(a.state, savePath)
@@ -144,7 +149,15 @@ func (a AppModel) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		var v int
 		fmt.Sscanf(a.state.InputBuffer, "%d", &v)
-		a.state = engine.SetAutoSellThreshold(a.state, v)
+		if a.state.Cursor == 5 {
+			if v < 0 {
+				v = 0
+			}
+			a.state.AutoBuyMinimum = v
+			a.state.AutoBuyEnabled = v > 0
+		} else {
+			a.state = engine.SetAutoSellThreshold(a.state, v)
+		}
 		a.state.InputMode = false
 		a.state.InputBuffer = ""
 	case "esc":
