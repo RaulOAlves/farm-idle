@@ -45,8 +45,12 @@ func sep() string {
 }
 
 func renderStatusLine(m model.Model) string {
-	profit := m.Money - m.MoneySnapshot
-	return fmt.Sprintf("Lucro/min: $%.0f  │  Auto-venda: ≤%d", profit, m.AutoSellThreshold)
+	autoBuy := "off"
+	if m.AutoBuyEnabled {
+		autoBuy = fmt.Sprintf("min %d", m.AutoBuyMinimum)
+	}
+
+	return fmt.Sprintf("Receita/min: $%.0f  │  Auto-venda: ≤%d  │  Auto-compra: %s", m.RecentRevenue, m.AutoSellThreshold, autoBuy)
 }
 
 func renderResources(m model.Model) string {
@@ -84,6 +88,7 @@ func renderField(m model.Model) string {
 
 	lines := []string{
 		boldStyle.Render("CAMPO"),
+		renderMiniGrid(m.Plants, 4),
 		progressBar(active, m.FieldSize, 20, pct),
 		fmt.Sprintf("Plantadas: %d  Crescendo: %d", planted, growing),
 		fmt.Sprintf("Prontas:   %d  Vazias:    %d", ready, empty),
@@ -127,6 +132,42 @@ func progressBar(current, max, width int, pct float64) string {
 	}
 }
 
+func renderMiniGrid(plants []model.PlantSlot, cols int) string {
+	if cols <= 0 {
+		cols = 4
+	}
+
+	var lines []string
+	var row strings.Builder
+
+	for i, p := range plants {
+		row.WriteRune(slotRune(p.State))
+		if (i+1)%cols == 0 {
+			lines = append(lines, row.String())
+			row.Reset()
+		}
+	}
+
+	if row.Len() > 0 {
+		lines = append(lines, row.String())
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func slotRune(state model.PlantState) rune {
+	switch state {
+	case model.PlantPlanted:
+		return '·'
+	case model.PlantGrowing:
+		return '▓'
+	case model.PlantReady:
+		return '█'
+	default:
+		return '□'
+	}
+}
+
 type actionItem struct {
 	label   string
 	enabled bool
@@ -135,8 +176,12 @@ type actionItem struct {
 func buildActions(m model.Model) []actionItem {
 	expandCost := engine.ExpandFieldCost(m.FieldSize)
 	label5 := fmt.Sprintf("[5] Config auto-venda  (atual: %d)", m.AutoSellThreshold)
-	if m.InputMode {
+	if m.InputMode && m.Cursor != 5 {
 		label5 = fmt.Sprintf("[5] Novo threshold: %s_", m.InputBuffer)
+	}
+	label6 := fmt.Sprintf("[6] Auto-compra min      %d", m.AutoBuyMinimum)
+	if m.InputMode && m.Cursor == 5 {
+		label6 = fmt.Sprintf("[6] Auto-compra min: %s_", m.InputBuffer)
 	}
 
 	return []actionItem{
@@ -145,6 +190,7 @@ func buildActions(m model.Model) []actionItem {
 		{fmt.Sprintf("[3] Upgrade colheita    $%.0f", model.HarvestUpgradeCost), m.Money >= model.HarvestUpgradeCost},
 		{"[4] Vender tudo          —", true},
 		{label5, true},
+		{label6, true},
 	}
 }
 
