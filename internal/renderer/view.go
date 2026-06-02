@@ -25,11 +25,12 @@ func View(m model.Model) string {
 	contentWidth := contentWidth(m)
 
 	if m.OfflineReport != nil {
-		return outerStyle.Width(contentWidth).Render(renderOfflineReport(*m.OfflineReport))
+		body := outerStyle.Width(contentWidth).Render(renderOfflineReport(*m.OfflineReport))
+		return placeOnScreen(m, body)
 	}
 
 	sections := []string{
-		boldStyle.Render(fmt.Sprintf("FARM IDLE v0.1  —  Dia %d", m.Day)),
+		renderBanner(m, contentWidth),
 		renderStatusLine(m),
 		sep(contentWidth),
 	}
@@ -42,11 +43,12 @@ func View(m model.Model) string {
 			sep(contentWidth),
 			renderActions(m),
 			sep(contentWidth),
-			renderLog(m),
+			renderLog(m, visibleLogEntries(m)),
 		)
 	}
 
-	return outerStyle.Width(contentWidth).Render(strings.Join(sections, "\n"))
+	body := outerStyle.Width(contentWidth).Render(strings.Join(sections, "\n"))
+	return placeOnScreen(m, body)
 }
 
 func contentWidth(m model.Model) int {
@@ -68,12 +70,13 @@ func sep(width int) string {
 }
 
 func renderMainContent(m model.Model, width int) string {
-	left := panelStyle.Width(leftColumnWidth(width)).Render(strings.Join([]string{
+	panelHeight := stackedPanelHeight(m)
+	left := panelStyle.Width(leftColumnWidth(width)).Height(panelHeight).Render(strings.Join([]string{
 		renderResources(m),
 		"",
 		renderSelectedSlot(m),
 	}, "\n"))
-	right := panelStyle.Width(rightColumnWidth(width)).Render(renderField(m))
+	right := panelStyle.Width(rightColumnWidth(width)).Height(panelHeight).Render(renderField(m))
 
 	if width < 96 {
 		return lipgloss.JoinVertical(lipgloss.Left, left, right)
@@ -86,18 +89,19 @@ func renderWideDashboard(m model.Model, width int) string {
 	leftWidth := maxInt(28, width/5)
 	rightWidth := maxInt(34, width/4)
 	centerWidth := width - leftWidth - rightWidth - 10
+	panelHeight := widePanelHeight(m)
 
-	left := panelStyle.Width(leftWidth).Render(strings.Join([]string{
+	left := panelStyle.Width(leftWidth).Height(panelHeight).Render(strings.Join([]string{
 		renderResources(m),
 		"",
 		renderSelectedSlot(m),
 	}, "\n"))
-	center := panelStyle.Width(centerWidth).Render(renderField(m))
-	right := panelStyle.Width(rightWidth).Render(strings.Join([]string{
+	center := panelStyle.Width(centerWidth).Height(panelHeight).Render(renderField(m))
+	right := panelStyle.Width(rightWidth).Height(panelHeight).Render(strings.Join([]string{
 		renderActions(m),
 		"",
 		sep(rightWidth),
-		renderLog(m),
+		renderLog(m, panelHeight-8),
 	}, "\n"))
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", center, "  ", right)
@@ -128,16 +132,17 @@ func renderStatusLine(m model.Model) string {
 		focus = "campo"
 	}
 
-	return fmt.Sprintf("Receita/min: $%.0f  │  Auto-venda: ≥%d  │  Auto-compra: %s  │  Foco: %s", m.RecentRevenue, m.AutoSellThreshold, autoBuy, focus)
+	return fmt.Sprintf("Dia %03d │ Receita/min $%.0f │ Auto-venda ≥%d │ Auto-compra %s │ Foco %s", m.Day, m.RecentRevenue, m.AutoSellThreshold, autoBuy, focus)
 }
 
 func renderResources(m model.Model) string {
 	lines := []string{
-		boldStyle.Render("RECURSOS"),
+		panelTitle("RECURSOS"),
 		fmt.Sprintf("💰 Dinheiro:  $%.0f", m.Money),
 		fmt.Sprintf("🌱 Sementes:  %d", m.Seeds),
 		fmt.Sprintf("📦 Estoque:   %d", m.Stock),
 		fmt.Sprintf("📈 Nível col: %d", m.HarvestLevel),
+		fmt.Sprintf("⚙ Lote seed:  %d", m.SeedsPerPurchase),
 	}
 
 	return strings.Join(lines, "\n")
@@ -158,7 +163,7 @@ func renderField(m model.Model) string {
 	cols := gridCols(m)
 
 	lines := []string{
-		boldStyle.Render("CAMPO"),
+		panelTitle("CAMPO"),
 		faintStyle.Render("Tab alterna foco. HJKL/setas movem no grid."),
 		renderMiniGrid(m, cols),
 		progressBar(active, m.FieldSize, 20, pct),
@@ -170,7 +175,7 @@ func renderField(m model.Model) string {
 }
 
 func renderSelectedSlot(m model.Model) string {
-	lines := []string{boldStyle.Render("SLOT")}
+	lines := []string{panelTitle("SLOT")}
 	slot, ok := selectedSlot(m)
 	if !ok {
 		lines = append(lines, faintStyle.Render("Campo vazio"))
@@ -293,7 +298,7 @@ func renderActions(m model.Model) string {
 	items := buildActions(m)
 
 	var b strings.Builder
-	b.WriteString(boldStyle.Render("AÇÕES") + "\n")
+	b.WriteString(panelTitle("AÇÕES") + "\n")
 	for i, item := range items {
 		cursor := "  "
 		if i == m.Cursor {
@@ -313,13 +318,16 @@ func renderActions(m model.Model) string {
 	return b.String()
 }
 
-func renderLog(m model.Model) string {
+func renderLog(m model.Model, maxEntries int) string {
 	var b strings.Builder
-	b.WriteString(boldStyle.Render("LOG") + "\n")
+	b.WriteString(panelTitle("LOG") + "\n")
 
 	entries := m.Log
-	if len(entries) > 5 {
-		entries = entries[len(entries)-5:]
+	if maxEntries <= 0 {
+		maxEntries = 5
+	}
+	if len(entries) > maxEntries {
+		entries = entries[len(entries)-maxEntries:]
 	}
 
 	if len(entries) == 0 {
@@ -342,7 +350,7 @@ func renderOfflineReport(r model.OfflineResult) string {
 	s := int(r.Duration.Seconds()) % 60
 
 	lines := []string{
-		boldStyle.Render("BEM-VINDO DE VOLTA"),
+		panelTitle("BEM-VINDO DE VOLTA"),
 		"",
 		fmt.Sprintf("Ausente:    %02dh %02dm %02ds", h, min, s),
 		fmt.Sprintf("Colheitas:  +%d", r.Harvests),
@@ -441,4 +449,60 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func panelTitle(label string) string {
+	return boldStyle.Render("╢ " + label + " ╟")
+}
+
+func renderBanner(m model.Model, _ int) string {
+	lines := []string{
+		"  ______   ___   ____  __  ___      ____  _____",
+		" / ____/  /   | / __ \\/  |/  /     /  _/ / ___/",
+		"/ /_     / /| |/ /_/ / /|_/ /_____ / /   \\__ \\ ",
+		"\\__/    /_/ |_|\\____/_/  /_/_____//___/ /____/ ",
+	}
+	banner := greenStyle.Render(strings.Join(lines, "\n"))
+	tagline := faintStyle.Render("painel operacional de fazenda idle")
+	version := yellowStyle.Render("v0.2-dev")
+	head := lipgloss.JoinHorizontal(lipgloss.Bottom, banner, "   ", version)
+	return lipgloss.JoinVertical(lipgloss.Left, head, tagline)
+}
+
+func stackedPanelHeight(m model.Model) int {
+	if m.ViewHeight >= 40 {
+		return 12
+	}
+	return 10
+}
+
+func widePanelHeight(m model.Model) int {
+	if m.ViewHeight <= 0 {
+		return 18
+	}
+	height := m.ViewHeight - 12
+	if height < 16 {
+		return 16
+	}
+	if height > 24 {
+		return 24
+	}
+	return height
+}
+
+func placeOnScreen(m model.Model, body string) string {
+	if m.ViewWidth <= 0 || m.ViewHeight <= 0 {
+		return body
+	}
+	return lipgloss.Place(m.ViewWidth, m.ViewHeight, lipgloss.Center, lipgloss.Top, body)
+}
+
+func visibleLogEntries(m model.Model) int {
+	if m.ViewHeight >= 42 {
+		return 8
+	}
+	if m.ViewHeight >= 32 {
+		return 6
+	}
+	return 5
 }

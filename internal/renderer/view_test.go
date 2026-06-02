@@ -23,9 +23,10 @@ func TestView_ShowsReceitaMinAndAutoBuy(t *testing.T) {
 		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
 	})
 
-	mustContain(t, view, "Receita/min: $42")
-	mustContain(t, view, "Auto-venda: ≥7")
-	mustContain(t, view, "Auto-compra: min 5")
+	mustContain(t, view, "Receita/min $42")
+	mustContain(t, view, "Auto-venda ≥7")
+	mustContain(t, view, "Auto-compra min 5")
+	mustContain(t, view, "painel operacional de fazenda idle")
 	if strings.Contains(view, "Lucro/min") {
 		t.Fatalf("view should not contain old label %q\nview:\n%s", "Lucro/min", view)
 	}
@@ -84,7 +85,7 @@ func TestView_ShowsSelectedSlotDetailsAndFieldFocus(t *testing.T) {
 		},
 	})
 
-	mustContain(t, view, "Foco: campo")
+	mustContain(t, view, "Foco campo")
 	mustContain(t, view, "SLOT")
 	mustContain(t, view, "Tipo:   Trigo")
 	mustContain(t, view, "Estado: crescendo")
