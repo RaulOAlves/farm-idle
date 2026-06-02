@@ -3,51 +3,42 @@ package main
 import (
 	"testing"
 
-	"farm-idle/internal/input"
 	"farm-idle/internal/model"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
-func TestHandleNormalMode_Action6EntersInputMode(t *testing.T) {
+func TestHandleNormalKey_Action6EntersInputMode(t *testing.T) {
 	a := AppModel{
 		state: model.Model{
 			AutoBuyMinimum: 7,
 		},
-		keys: input.DefaultKeyMap,
 	}
 
-	got, _ := a.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'6'}})
-	next := got.(AppModel)
-
-	if !next.state.InputMode {
+	quit := a.handleNormalKey("6")
+	if quit {
+		t.Fatal("quit: want false, got true")
+	}
+	if !a.state.InputMode {
 		t.Fatal("input mode: want true, got false")
 	}
-	if next.state.InputBuffer != "7" {
-		t.Fatalf("input buffer: want existing minimum '7', got %q", next.state.InputBuffer)
+	if a.state.InputBuffer != "7" {
+		t.Fatalf("input buffer: want existing minimum '7', got %q", a.state.InputBuffer)
 	}
-	if next.state.Cursor != 5 {
-		t.Fatalf("cursor: want 5, got %d", next.state.Cursor)
-	}
-}
-
-func TestHandleNormalMode_DownReachesAction6(t *testing.T) {
-	a := AppModel{
-		state: model.Model{},
-		keys:  input.DefaultKeyMap,
-	}
-
-	var got tea.Model
-	for i := 0; i < 6; i++ {
-		got, _ = a.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-		a = got.(AppModel)
-	}
-
 	if a.state.Cursor != 5 {
 		t.Fatalf("cursor: want 5, got %d", a.state.Cursor)
 	}
 }
 
-func TestHandleInputMode_EnterOnAction6SavesAutoBuyMinimum(t *testing.T) {
+func TestHandleNormalKey_DownReachesAction6(t *testing.T) {
+	a := AppModel{state: model.Model{}}
+	for i := 0; i < 6; i++ {
+		a.handleNormalKey("j")
+	}
+	if a.state.Cursor != 5 {
+		t.Fatalf("cursor: want 5, got %d", a.state.Cursor)
+	}
+}
+
+func TestHandleInputKey_EnterOnAction6SavesAutoBuyMinimum(t *testing.T) {
 	a := AppModel{
 		state: model.Model{
 			Cursor:         5,
@@ -57,24 +48,22 @@ func TestHandleInputMode_EnterOnAction6SavesAutoBuyMinimum(t *testing.T) {
 		},
 	}
 
-	got, _ := a.handleInputMode(tea.KeyMsg{Type: tea.KeyEnter})
-	next := got.(AppModel)
-
-	if next.state.AutoBuyMinimum != 12 {
-		t.Fatalf("auto buy minimum: want 12, got %d", next.state.AutoBuyMinimum)
+	a.handleInputKey("enter")
+	if a.state.AutoBuyMinimum != 12 {
+		t.Fatalf("auto buy minimum: want 12, got %d", a.state.AutoBuyMinimum)
 	}
-	if !next.state.AutoBuyEnabled {
+	if !a.state.AutoBuyEnabled {
 		t.Fatal("auto buy enabled: want true, got false")
 	}
-	if next.state.InputMode {
+	if a.state.InputMode {
 		t.Fatal("input mode: want false, got true")
 	}
-	if next.state.InputBuffer != "" {
-		t.Fatalf("input buffer: want empty, got %q", next.state.InputBuffer)
+	if a.state.InputBuffer != "" {
+		t.Fatalf("input buffer: want empty, got %q", a.state.InputBuffer)
 	}
 }
 
-func TestHandleInputMode_EnterOnAction6ZeroDisablesAutoBuy(t *testing.T) {
+func TestHandleInputKey_EnterOnAction6ZeroDisablesAutoBuy(t *testing.T) {
 	a := AppModel{
 		state: model.Model{
 			Cursor:         5,
@@ -85,18 +74,16 @@ func TestHandleInputMode_EnterOnAction6ZeroDisablesAutoBuy(t *testing.T) {
 		},
 	}
 
-	got, _ := a.handleInputMode(tea.KeyMsg{Type: tea.KeyEnter})
-	next := got.(AppModel)
-
-	if next.state.AutoBuyMinimum != 0 {
-		t.Fatalf("auto buy minimum: want 0, got %d", next.state.AutoBuyMinimum)
+	a.handleInputKey("enter")
+	if a.state.AutoBuyMinimum != 0 {
+		t.Fatalf("auto buy minimum: want 0, got %d", a.state.AutoBuyMinimum)
 	}
-	if next.state.AutoBuyEnabled {
+	if a.state.AutoBuyEnabled {
 		t.Fatal("auto buy enabled: want false, got true")
 	}
 }
 
-func TestHandleInputMode_EscCancelsAction6Edit(t *testing.T) {
+func TestHandleInputKey_EscCancelsAction6Edit(t *testing.T) {
 	a := AppModel{
 		state: model.Model{
 			Cursor:         5,
@@ -107,40 +94,35 @@ func TestHandleInputMode_EscCancelsAction6Edit(t *testing.T) {
 		},
 	}
 
-	got, _ := a.handleInputMode(tea.KeyMsg{Type: tea.KeyEsc})
-	next := got.(AppModel)
-
-	if next.state.AutoBuyMinimum != 5 {
-		t.Fatalf("auto buy minimum: want 5, got %d", next.state.AutoBuyMinimum)
+	a.handleInputKey("esc")
+	if a.state.AutoBuyMinimum != 5 {
+		t.Fatalf("auto buy minimum: want 5, got %d", a.state.AutoBuyMinimum)
 	}
-	if !next.state.AutoBuyEnabled {
+	if !a.state.AutoBuyEnabled {
 		t.Fatal("auto buy enabled: want true, got false")
 	}
-	if next.state.InputMode {
+	if a.state.InputMode {
 		t.Fatal("input mode: want false, got true")
 	}
-	if next.state.InputBuffer != "" {
-		t.Fatalf("input buffer: want empty, got %q", next.state.InputBuffer)
+	if a.state.InputBuffer != "" {
+		t.Fatalf("input buffer: want empty, got %q", a.state.InputBuffer)
 	}
 }
 
-func TestHandleNormalMode_TabTogglesFieldFocus(t *testing.T) {
+func TestHandleNormalKey_TabTogglesFieldFocus(t *testing.T) {
 	a := AppModel{
 		state: model.Model{
 			FocusMode: model.FocusMenu,
 		},
-		keys: input.DefaultKeyMap,
 	}
 
-	got, _ := a.handleNormalMode(tea.KeyMsg{Type: tea.KeyTab})
-	next := got.(AppModel)
-
-	if next.state.FocusMode != model.FocusField {
-		t.Fatalf("focus mode: want %q, got %q", model.FocusField, next.state.FocusMode)
+	a.handleNormalKey("tab")
+	if a.state.FocusMode != model.FocusField {
+		t.Fatalf("focus mode: want %q, got %q", model.FocusField, a.state.FocusMode)
 	}
 }
 
-func TestHandleNormalMode_FieldFocusMovesGridCursor(t *testing.T) {
+func TestHandleNormalKey_FieldFocusMovesGridCursor(t *testing.T) {
 	a := AppModel{
 		state: model.Model{
 			FocusMode:   model.FocusField,
@@ -148,18 +130,15 @@ func TestHandleNormalMode_FieldFocusMovesGridCursor(t *testing.T) {
 			ViewWidth:   80,
 			Plants:      make([]model.PlantSlot, 8),
 		},
-		keys: input.DefaultKeyMap,
 	}
 
-	got, _ := a.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
-	next := got.(AppModel)
-	if next.state.FieldCursor != 1 {
-		t.Fatalf("field cursor after right: want 1, got %d", next.state.FieldCursor)
+	a.handleNormalKey("l")
+	if a.state.FieldCursor != 1 {
+		t.Fatalf("field cursor after right: want 1, got %d", a.state.FieldCursor)
 	}
 
-	got, _ = next.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	next = got.(AppModel)
-	if next.state.FieldCursor != 5 {
-		t.Fatalf("field cursor after down: want 5, got %d", next.state.FieldCursor)
+	a.handleNormalKey("j")
+	if a.state.FieldCursor != 5 {
+		t.Fatalf("field cursor after down: want 5, got %d", a.state.FieldCursor)
 	}
 }
