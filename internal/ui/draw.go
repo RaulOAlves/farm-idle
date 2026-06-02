@@ -26,6 +26,10 @@ var (
 	sproutStyle = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x9ee06d)).Bold(true)
 	growStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0x63d471)).Bold(true)
 	wheatStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xffd966)).Bold(true)
+	nightSky    = tcell.StyleDefault.Background(tcell.NewHexColor(0x10192f)).Foreground(tcell.NewHexColor(0xd7e8ff))
+	dawnSky     = tcell.StyleDefault.Background(tcell.NewHexColor(0x5b3659)).Foreground(tcell.NewHexColor(0xffd7b0))
+	daySky      = tcell.StyleDefault.Background(tcell.NewHexColor(0x19324a)).Foreground(tcell.NewHexColor(0xa9e7ff))
+	duskSky     = tcell.StyleDefault.Background(tcell.NewHexColor(0x4a2941)).Foreground(tcell.NewHexColor(0xffca8a))
 )
 
 func Draw(screen tcell.Screen, m model.Model) {
@@ -40,6 +44,7 @@ func Draw(screen tcell.Screen, m model.Model) {
 	drawBanner(screen, 2, 1)
 	drawText(screen, 2, 7, fmt.Sprintf("Dia %03d | Receita/min $%.0f | Auto-venda >=%d | Auto-compra %s | Foco %s",
 		m.Day, m.RecentRevenue, m.AutoSellThreshold, autoBuyLabel(m), focusLabel(m)), accentStyle)
+	drawText(screen, 2, 8, fmt.Sprintf("Ambiente %s | Vento %s", phaseLabel(m), breezeLabel(m)), mutedStyle)
 
 	if w >= 130 {
 		drawWide(screen, m, w, h)
@@ -88,14 +93,14 @@ func drawResourceBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 
 func drawFieldBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 	drawBox(screen, x, y, w, h, " CAMPO ", borderStyle)
-	drawText(screen, x+2, y+1, "Tab troca foco. HJKL/setas movem cursor.", mutedStyle)
+	drawText(screen, x+2, y+1, fmt.Sprintf("Tab troca foco. HJKL/setas movem cursor. Clima: %s", phaseLabel(m)), mutedStyle)
 
 	fieldTop := y + 3
 	fieldHeight := maxInt(6, h-7)
 	fieldBottom := minInt(y+h-4, fieldTop+fieldHeight-1)
 	gridX := x + 2
 	cols := gridCols(m)
-	drawFieldBackdrop(screen, gridX, fieldTop, w-4, fieldBottom-fieldTop+1)
+	drawFieldBackdrop(screen, gridX, fieldTop, w-4, fieldBottom-fieldTop+1, m)
 
 	tileW := 5
 	tileH := 2
@@ -106,7 +111,7 @@ func drawFieldBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 		if cellY+1 > fieldBottom-1 || cellX+tileW-1 > x+w-3 {
 			continue
 		}
-		drawCropTile(screen, cellX, cellY, tileW, p, i == m.FieldCursor, m.FocusMode == model.FocusField, (i/cols)%2 == 0)
+		drawCropTile(screen, cellX, cellY, tileW, p, i == m.FieldCursor, m.FocusMode == model.FocusField, (i/cols)%2 == 0, m.TickCount)
 	}
 
 	active, planted, growing, ready, empty, nextReady := summarizeField(m.Plants)
@@ -400,17 +405,22 @@ func slotRune(state model.PlantState) rune {
 	}
 }
 
-func drawFieldBackdrop(screen tcell.Screen, x, y, w, h int) {
+func drawFieldBackdrop(screen tcell.Screen, x, y, w, h int, m model.Model) {
+	sky := skyForPhase(m)
 	skyRows := minInt(2, h)
 	for row := 0; row < skyRows; row++ {
 		for col := 0; col < w; col++ {
 			ch := ' '
-			if row == 1 && col%9 == 0 {
+			if isNightPhase(m) && row == 0 && (col+m.TickCount)%11 == 0 {
+				ch = '✦'
+			}
+			if row == 1 && col%9 == 0 && !isNightPhase(m) {
 				ch = '·'
 			}
-			put(screen, x+col, y+row, ch, skyStyle)
+			put(screen, x+col, y+row, ch, sky)
 		}
 	}
+	drawSkyAccent(screen, x, y, w, skyRows, m)
 	if h <= skyRows {
 		return
 	}
@@ -437,7 +447,7 @@ func drawFieldBackdrop(screen tcell.Screen, x, y, w, h int) {
 	}
 }
 
-func drawCropTile(screen tcell.Screen, x, y, w int, slot model.PlantSlot, selected, focused, alt bool) {
+func drawCropTile(screen tcell.Screen, x, y, w int, slot model.PlantSlot, selected, focused, alt bool, tickCount int) {
 	base := furrowA
 	if alt {
 		base = furrowB
@@ -465,28 +475,46 @@ func drawCropTile(screen tcell.Screen, x, y, w int, slot model.PlantSlot, select
 		put(screen, x+w-1, y+1, ']', frame)
 	}
 
-	glyph := cropGlyph(slot.State)
+	glyph := cropGlyph(slot.State, tickCount)
 	textX := x + 2
 	for i, r := range glyph {
 		put(screen, textX+i, y, r, style)
 	}
 	if slot.State == model.PlantReady {
-		put(screen, x+2, y+1, 'm', wheatStyle)
-		put(screen, x+3, y+1, 'm', wheatStyle)
+		readyTail := []rune(readyTailGlyph(tickCount))
+		put(screen, x+2, y+1, readyTail[0], wheatStyle)
+		put(screen, x+3, y+1, readyTail[1], wheatStyle)
 	}
 }
 
-func cropGlyph(state model.PlantState) string {
+func cropGlyph(state model.PlantState, tickCount int) string {
+	sway := tickCount % 4
 	switch state {
 	case model.PlantPlanted:
+		if sway < 2 {
+			return " i"
+		}
 		return " i"
 	case model.PlantGrowing:
-		return "Yv"
+		if sway < 2 {
+			return "Yv"
+		}
+		return "vY"
 	case model.PlantReady:
-		return "WW"
+		if sway < 2 {
+			return "WW"
+		}
+		return "MM"
 	default:
 		return "··"
 	}
+}
+
+func readyTailGlyph(tickCount int) string {
+	if tickCount%4 < 2 {
+		return "mm"
+	}
+	return "nn"
 }
 
 func gridCols(m model.Model) int {
@@ -514,4 +542,73 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func phaseIndex(m model.Model) int {
+	if model.TicksPerDay <= 0 {
+		return 1
+	}
+	segment := model.TicksPerDay / 4
+	if segment <= 0 {
+		segment = 1
+	}
+	return (m.TickCount / segment) % 4
+}
+
+func phaseLabel(m model.Model) string {
+	switch phaseIndex(m) {
+	case 0:
+		return "amanhecer"
+	case 1:
+		return "dia aberto"
+	case 2:
+		return "entardecer"
+	default:
+		return "noite"
+	}
+}
+
+func breezeLabel(m model.Model) string {
+	switch m.TickCount % 6 {
+	case 0, 1:
+		return "calmo"
+	case 2, 3:
+		return "leve"
+	default:
+		return "soprando"
+	}
+}
+
+func isNightPhase(m model.Model) bool {
+	return phaseIndex(m) == 3
+}
+
+func skyForPhase(m model.Model) tcell.Style {
+	switch phaseIndex(m) {
+	case 0:
+		return dawnSky
+	case 1:
+		return daySky
+	case 2:
+		return duskSky
+	default:
+		return nightSky
+	}
+}
+
+func drawSkyAccent(screen tcell.Screen, x, y, w, skyRows int, m model.Model) {
+	if skyRows == 0 || w < 6 {
+		return
+	}
+	iconX := x + minInt(w-4, 2+(m.TickCount%(maxInt(1, w-8))))
+	switch phaseIndex(m) {
+	case 0:
+		drawText(screen, iconX, y, "◔", readyStyle)
+	case 1:
+		drawText(screen, iconX, y, "☼", readyStyle)
+	case 2:
+		drawText(screen, iconX, y, "◕", readyStyle)
+	default:
+		drawText(screen, iconX, y, "☾", accentStyle)
+	}
 }
