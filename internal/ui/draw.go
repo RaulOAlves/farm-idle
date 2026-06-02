@@ -81,6 +81,7 @@ func drawResourceBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 		fmt.Sprintf("Estoque    %d", m.Stock),
 		fmt.Sprintf("Nivel col  %d", m.HarvestLevel),
 		fmt.Sprintf("Lote seed  %d", m.SeedsPerPurchase),
+		fmt.Sprintf("Plantio    %s", m.SelectedCrop),
 		"",
 		"SLOT",
 		fmt.Sprintf("Indice     %d/%d", selectedIndex(m), maxInt(1, len(m.Plants))),
@@ -140,6 +141,7 @@ func buildActionLines(m model.Model) []string {
 		fmt.Sprintf("%s [4] Vender tudo", cursorMark(m, 3)),
 		action5Line(m),
 		action6Line(m),
+		action7Line(m),
 		"",
 		"[Q] Salvar e sair",
 	}
@@ -289,6 +291,11 @@ func action6Line(m model.Model) string {
 		return fmt.Sprintf("> [6] Auto-compra      %s_", m.InputBuffer)
 	}
 	return fmt.Sprintf("%s [6] Auto-compra      %d", cursorMark(m, 5), m.AutoBuyMinimum)
+}
+
+func action7Line(m model.Model) string {
+	crop := model.CropByName(m.SelectedCrop)
+	return fmt.Sprintf("%s [7] Cultura ativa    %s (%ds)", cursorMark(m, 6), crop.Name, crop.GrowTicks)
 }
 
 func selectedIndex(m model.Model) int {
@@ -475,7 +482,7 @@ func drawCropTile(screen tcell.Screen, x, y, w int, slot model.PlantSlot, select
 		put(screen, x+w-1, y+1, ']', frame)
 	}
 
-	glyph := cropGlyph(slot.State, tickCount)
+	glyph := cropNameToGlyph(slot.PlantType, slot.State, tickCount)
 	textX := x + 2
 	for i, r := range glyph {
 		put(screen, textX+i, y, r, style)
@@ -508,6 +515,37 @@ func cropGlyph(state model.PlantState, tickCount int) string {
 	default:
 		return "··"
 	}
+}
+
+func cropNameToGlyph(name string, state model.PlantState, tickCount int) string {
+	sway := tickCount % 4
+	switch name {
+	case "Alface":
+		switch state {
+		case model.PlantPlanted:
+			return " i"
+		case model.PlantGrowing:
+			if sway < 2 {
+				return "()"
+			}
+			return "(("
+		case model.PlantReady:
+			return "@@"
+		}
+	case "Milho":
+		switch state {
+		case model.PlantPlanted:
+			return " !"
+		case model.PlantGrowing:
+			if sway < 2 {
+				return "||"
+			}
+			return "!!"
+		case model.PlantReady:
+			return "H#"
+		}
+	}
+	return cropGlyph(state, tickCount)
 }
 
 func readyTailGlyph(tickCount int) string {

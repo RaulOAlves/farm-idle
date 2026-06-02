@@ -30,11 +30,11 @@ func TestHandleNormalKey_Action6EntersInputMode(t *testing.T) {
 
 func TestHandleNormalKey_DownReachesAction6(t *testing.T) {
 	a := AppModel{state: model.Model{}}
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 7; i++ {
 		a.handleNormalKey("j")
 	}
-	if a.state.Cursor != 5 {
-		t.Fatalf("cursor: want 5, got %d", a.state.Cursor)
+	if a.state.Cursor != 6 {
+		t.Fatalf("cursor: want 6, got %d", a.state.Cursor)
 	}
 }
 
@@ -140,5 +140,18 @@ func TestHandleNormalKey_FieldFocusMovesGridCursor(t *testing.T) {
 	a.handleNormalKey("j")
 	if a.state.FieldCursor != 5 {
 		t.Fatalf("field cursor after down: want 5, got %d", a.state.FieldCursor)
+	}
+}
+
+func TestHandleNormalKey_Action7CyclesCrop(t *testing.T) {
+	a := AppModel{
+		state: model.Model{
+			SelectedCrop: model.DefaultPlantType,
+		},
+	}
+
+	a.handleNormalKey("7")
+	if a.state.SelectedCrop == model.DefaultPlantType {
+		t.Fatalf("selected crop should change from %q", model.DefaultPlantType)
 	}
 }

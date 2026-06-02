@@ -31,10 +31,11 @@ func Tick(m model.Model) model.Model {
 		switch m.Plants[i].State {
 		case model.PlantEmpty:
 			if m.Seeds > 0 {
+				crop := model.CropByName(m.SelectedCrop)
 				m.Seeds--
 				m.Plants[i].State = model.PlantPlanted
-				m.Plants[i].TicksRemaining = model.GrowTicks
-				m.Plants[i].PlantType = model.DefaultPlantType
+				m.Plants[i].TicksRemaining = crop.GrowTicks
+				m.Plants[i].PlantType = crop.Name
 			}
 		case model.PlantPlanted:
 			m.Plants[i].State = model.PlantGrowing
@@ -50,10 +51,16 @@ func Tick(m model.Model) model.Model {
 				m.Plants[i].TicksRemaining = 0
 			}
 		case model.PlantReady:
-			m.Stock += m.HarvestLevel
+			crop := model.CropByName(m.Plants[i].PlantType)
+			yield := crop.Yield
+			if yield <= 0 {
+				yield = 1
+			}
+			harvested := yield * m.HarvestLevel
+			m.Stock += harvested
 			m.Plants[i].State = model.PlantEmpty
 			m.Plants[i].PlantType = ""
-			m = addLog(m, fmt.Sprintf("🌾 Colheita: +%d estoques", m.HarvestLevel))
+			m = addLog(m, fmt.Sprintf("🌾 Colheita %s: +%d estoques", crop.Name, harvested))
 		}
 	}
 
@@ -162,6 +169,12 @@ func SetAutoSellThreshold(m model.Model, v int) model.Model {
 		return addLog(m, "⚙ Auto-venda desativada")
 	}
 	return addLog(m, fmt.Sprintf("⚙ Auto-venda: threshold=%d", v))
+}
+
+func CycleSelectedCrop(m model.Model) model.Model {
+	next := model.NextCrop(m.SelectedCrop)
+	m.SelectedCrop = next.Name
+	return addLog(m, fmt.Sprintf("🌿 Cultura ativa: %s (%ds)", next.Name, next.GrowTicks))
 }
 
 func shouldAutoBuy(m model.Model) bool {

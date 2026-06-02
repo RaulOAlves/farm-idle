@@ -19,6 +19,7 @@ type SaveData struct {
 	AutoBuyEnabled         bool                 `json:"auto_buy_enabled"`
 	AutoBuyMinimum         int                  `json:"auto_buy_minimum"`
 	AutoBuyMaxCashFraction float64              `json:"auto_buy_max_cash_fraction"`
+	SelectedCrop           string               `json:"selected_crop"`
 	HarvestLevel           int                  `json:"harvest_level"`
 	AutoSellThreshold      int                  `json:"auto_sell_threshold"`
 	Day                    int                  `json:"day"`
@@ -42,6 +43,7 @@ func DefaultModel() model.Model {
 		SeedsPerPurchase:       5,
 		AutoBuyMinimum:         5,
 		AutoBuyMaxCashFraction: model.DefaultAutoBuyMaxCashFraction,
+		SelectedCrop:           model.DefaultPlantType,
 		HarvestLevel:           1,
 		AutoSellThreshold:      model.DefaultAutoSellThreshold,
 		Day:                    1,
@@ -60,6 +62,7 @@ func Save(m model.Model, path string) error {
 		AutoBuyEnabled:         m.AutoBuyEnabled,
 		AutoBuyMinimum:         m.AutoBuyMinimum,
 		AutoBuyMaxCashFraction: m.AutoBuyMaxCashFraction,
+		SelectedCrop:           m.SelectedCrop,
 		HarvestLevel:           m.HarvestLevel,
 		AutoSellThreshold:      m.AutoSellThreshold,
 		Day:                    m.Day,
@@ -112,6 +115,9 @@ func Load(path string) (model.Model, error) {
 	}
 	if data.AutoBuyMaxCashFraction > 0 {
 		m.AutoBuyMaxCashFraction = data.AutoBuyMaxCashFraction
+	}
+	if data.SelectedCrop != "" {
+		m.SelectedCrop = model.CropByName(data.SelectedCrop).Name
 	}
 	m.HarvestLevel = data.HarvestLevel
 	if m.HarvestLevel == 0 {

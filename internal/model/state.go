@@ -7,6 +7,12 @@ import "time"
 type PlantState string
 type FocusMode string
 
+type CropProfile struct {
+	Name      string
+	GrowTicks int
+	Yield     int
+}
+
 // Plant states
 const (
 	PlantEmpty   PlantState = "empty"
@@ -75,6 +81,7 @@ type Model struct {
 	AutoBuyEnabled         bool
 	AutoBuyMinimum         int
 	AutoBuyMaxCashFraction float64
+	SelectedCrop           string
 
 	// Upgrades
 	HarvestLevel      int
@@ -98,4 +105,39 @@ type Model struct {
 	OfflineReport *OfflineResult
 	ViewWidth     int
 	ViewHeight    int
+}
+
+var cropCatalog = []CropProfile{
+	{Name: "Alface", GrowTicks: 18, Yield: 1},
+	{Name: "Trigo", GrowTicks: GrowTicks, Yield: 1},
+	{Name: "Milho", GrowTicks: 42, Yield: 2},
+}
+
+func CropCatalog() []CropProfile {
+	out := make([]CropProfile, len(cropCatalog))
+	copy(out, cropCatalog)
+	return out
+}
+
+func CropByName(name string) CropProfile {
+	for _, crop := range cropCatalog {
+		if crop.Name == name {
+			return crop
+		}
+	}
+	for _, crop := range cropCatalog {
+		if crop.Name == DefaultPlantType {
+			return crop
+		}
+	}
+	return cropCatalog[0]
+}
+
+func NextCrop(current string) CropProfile {
+	for i, crop := range cropCatalog {
+		if crop.Name == current {
+			return cropCatalog[(i+1)%len(cropCatalog)]
+		}
+	}
+	return CropByName(DefaultPlantType)
 }

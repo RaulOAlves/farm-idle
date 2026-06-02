@@ -119,6 +119,7 @@ func TestSaveLoad_RoundtripAutoBuyAndRevenueTracker(t *testing.T) {
 	m.AutoBuyEnabled = true
 	m.AutoBuyMinimum = 8
 	m.AutoBuyMaxCashFraction = 0.45
+	m.SelectedCrop = "Milho"
 	m.RevenueTracker = model.RevenueTracker{
 		Buckets: [model.TicksPerDay]float64{0: 10, 3: 7.5, 59: 2.5},
 		Cursor:  3,
@@ -148,6 +149,9 @@ func TestSaveLoad_RoundtripAutoBuyAndRevenueTracker(t *testing.T) {
 	}
 	if loaded.AutoBuyMaxCashFraction != m.AutoBuyMaxCashFraction {
 		t.Fatalf("auto_buy_max_cash_fraction: want %.2f, got %.2f", m.AutoBuyMaxCashFraction, loaded.AutoBuyMaxCashFraction)
+	}
+	if loaded.SelectedCrop != m.SelectedCrop {
+		t.Fatalf("selected_crop: want %q, got %q", m.SelectedCrop, loaded.SelectedCrop)
 	}
 	if loaded.RevenueTracker != m.RevenueTracker {
 		t.Fatalf("revenue_tracker: want %+v, got %+v", m.RevenueTracker, loaded.RevenueTracker)
@@ -207,5 +211,8 @@ func TestLoad_LegacySaveDefaultsAutoBuyFields(t *testing.T) {
 			model.DefaultAutoBuyMaxCashFraction,
 			loaded.AutoBuyMaxCashFraction,
 		)
+	}
+	if loaded.SelectedCrop != model.DefaultPlantType {
+		t.Fatalf("selected_crop: want default %q, got %q", model.DefaultPlantType, loaded.SelectedCrop)
 	}
 }

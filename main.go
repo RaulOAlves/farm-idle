@@ -68,7 +68,7 @@ func (a *AppModel) handleNormalKey(name string) bool {
 	case "down", "j":
 		if a.state.FocusMode == model.FocusField {
 			a.state.FieldCursor = moveFieldCursor(a.state, 0, 1)
-		} else if a.state.Cursor < 5 {
+		} else if a.state.Cursor < 6 {
 			a.state.Cursor++
 		}
 	case "left":
@@ -94,9 +94,9 @@ func (a *AppModel) handleNormalKey(name string) bool {
 	case "5":
 		a.executeAction(4)
 	case "6":
-		a.state.InputMode = true
-		a.state.Cursor = 5
-		a.state.InputBuffer = strconv.Itoa(a.state.AutoBuyMinimum)
+		a.executeAction(5)
+	case "7":
+		a.executeAction(6)
 	case "q", "ctrl+c":
 		a.state.LastSave = time.Now()
 		_ = persistence.Save(a.state, savePath)
@@ -121,6 +121,12 @@ func (a *AppModel) executeAction(index int) {
 	case 4:
 		a.state.InputMode = true
 		a.state.InputBuffer = ""
+	case 5:
+		a.state.InputMode = true
+		a.state.Cursor = 5
+		a.state.InputBuffer = strconv.Itoa(a.state.AutoBuyMinimum)
+	case 6:
+		a.state = engine.CycleSelectedCrop(a.state)
 	}
 
 	if err != nil {

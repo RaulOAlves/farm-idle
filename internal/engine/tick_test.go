@@ -13,6 +13,7 @@ func TestTick_PlantsSeeds(t *testing.T) {
 		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
 		HarvestLevel:      1,
 		AutoSellThreshold: 999,
+		SelectedCrop:      model.DefaultPlantType,
 	}
 	got := engine.Tick(m)
 	if got.Seeds != 0 {
@@ -72,6 +73,36 @@ func TestTick_HarvestsReadyPlant(t *testing.T) {
 	}
 	if got.Plants[0].PlantType != "" {
 		t.Errorf("plant type after harvest: want empty, got %q", got.Plants[0].PlantType)
+	}
+}
+
+func TestTick_SelectedCropUsesSpecificGrowTime(t *testing.T) {
+	m := model.Model{
+		Seeds:             1,
+		SelectedCrop:      "Milho",
+		Plants:            []model.PlantSlot{{State: model.PlantEmpty}},
+		HarvestLevel:      1,
+		AutoSellThreshold: 999,
+	}
+	got := engine.Tick(m)
+	if got.Plants[0].PlantType != "Milho" {
+		t.Fatalf("plant type: want Milho, got %q", got.Plants[0].PlantType)
+	}
+	if got.Plants[0].TicksRemaining != model.CropByName("Milho").GrowTicks {
+		t.Fatalf("ticks: want %d, got %d", model.CropByName("Milho").GrowTicks, got.Plants[0].TicksRemaining)
+	}
+}
+
+func TestTick_HarvestsCropSpecificYield(t *testing.T) {
+	m := model.Model{
+		Plants:            []model.PlantSlot{{State: model.PlantReady, PlantType: "Milho"}},
+		HarvestLevel:      2,
+		AutoSellThreshold: 999,
+	}
+	got := engine.Tick(m)
+	want := model.CropByName("Milho").Yield * 2
+	if got.Stock != want {
+		t.Fatalf("stock: want %d, got %d", want, got.Stock)
 	}
 }
 
