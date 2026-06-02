@@ -9,29 +9,35 @@ import (
 )
 
 var (
-	baseStyle    = tcell.StyleDefault.Background(tcell.NewHexColor(0x0b1d18)).Foreground(tcell.ColorWhite)
-	borderStyle  = baseStyle.Foreground(tcell.NewHexColor(0x6dc36d))
-	titleStyle   = baseStyle.Foreground(tcell.NewHexColor(0xe2d36b)).Bold(true)
-	labelStyle   = baseStyle.Foreground(tcell.NewHexColor(0x8ccf7e))
-	accentStyle  = baseStyle.Foreground(tcell.NewHexColor(0x7ed7d1))
-	mutedStyle   = baseStyle.Foreground(tcell.NewHexColor(0x7b8f88))
-	soilStyle    = baseStyle.Foreground(tcell.NewHexColor(0xa87449))
-	leafStyle    = baseStyle.Foreground(tcell.NewHexColor(0x79d45b))
-	readyStyle   = baseStyle.Foreground(tcell.NewHexColor(0xf8cb4d)).Bold(true)
-	cursorStyle  = baseStyle.Foreground(tcell.NewHexColor(0x0b1d18)).Background(tcell.NewHexColor(0x98e87b)).Bold(true)
-	skyStyle     = tcell.StyleDefault.Background(tcell.NewHexColor(0x19324a)).Foreground(tcell.NewHexColor(0xa9e7ff))
-	grassStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x254f22)).Foreground(tcell.NewHexColor(0x87d96c))
-	furrowA      = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x8b5c3a))
-	furrowB      = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xa87449))
-	sproutStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x9ee06d)).Bold(true)
-	growStyle    = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0x63d471)).Bold(true)
-	wheatStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xffd966)).Bold(true)
-	lettuceStyle = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x68e06a)).Bold(true)
-	tomatoStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xff5f57)).Bold(true)
-	nightSky     = tcell.StyleDefault.Background(tcell.NewHexColor(0x10192f)).Foreground(tcell.NewHexColor(0xd7e8ff))
-	dawnSky      = tcell.StyleDefault.Background(tcell.NewHexColor(0x5b3659)).Foreground(tcell.NewHexColor(0xffd7b0))
-	daySky       = tcell.StyleDefault.Background(tcell.NewHexColor(0x19324a)).Foreground(tcell.NewHexColor(0xa9e7ff))
-	duskSky      = tcell.StyleDefault.Background(tcell.NewHexColor(0x4a2941)).Foreground(tcell.NewHexColor(0xffca8a))
+	baseStyle           = tcell.StyleDefault.Background(tcell.NewHexColor(0x0b1d18)).Foreground(tcell.ColorWhite)
+	borderStyle         = baseStyle.Foreground(tcell.NewHexColor(0x6dc36d))
+	titleStyle          = baseStyle.Foreground(tcell.NewHexColor(0xe2d36b)).Bold(true)
+	labelStyle          = baseStyle.Foreground(tcell.NewHexColor(0x8ccf7e))
+	accentStyle         = baseStyle.Foreground(tcell.NewHexColor(0x7ed7d1))
+	mutedStyle          = baseStyle.Foreground(tcell.NewHexColor(0x7b8f88))
+	soilStyle           = baseStyle.Foreground(tcell.NewHexColor(0xa87449))
+	leafStyle           = baseStyle.Foreground(tcell.NewHexColor(0x79d45b))
+	readyStyle          = baseStyle.Foreground(tcell.NewHexColor(0xf8cb4d)).Bold(true)
+	cursorStyle         = baseStyle.Foreground(tcell.NewHexColor(0x0b1d18)).Background(tcell.NewHexColor(0x98e87b)).Bold(true)
+	skyStyle            = tcell.StyleDefault.Background(tcell.NewHexColor(0x19324a)).Foreground(tcell.NewHexColor(0xa9e7ff))
+	grassStyle          = tcell.StyleDefault.Background(tcell.NewHexColor(0x254f22)).Foreground(tcell.NewHexColor(0x87d96c))
+	furrowA             = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x8b5c3a))
+	furrowB             = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xa87449))
+	sproutStyle         = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x9ee06d)).Bold(true)
+	growStyle           = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0x63d471)).Bold(true)
+	wheatPlantedStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0xffeaa3)).Bold(true)
+	wheatGrowingStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xffd966)).Bold(true)
+	wheatReadyStyle     = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xe5bc45)).Bold(true)
+	lettucePlantedStyle = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0xb8f59b)).Bold(true)
+	lettuceGrowingStyle = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0x68e06a)).Bold(true)
+	lettuceReadyStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0x4fc45f)).Bold(true)
+	tomatoPlantedStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0xff9a8f)).Bold(true)
+	tomatoGrowingStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xff5f57)).Bold(true)
+	tomatoReadyStyle    = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xd94b45)).Bold(true)
+	nightSky            = tcell.StyleDefault.Background(tcell.NewHexColor(0x10192f)).Foreground(tcell.NewHexColor(0xd7e8ff))
+	dawnSky             = tcell.StyleDefault.Background(tcell.NewHexColor(0x5b3659)).Foreground(tcell.NewHexColor(0xffd7b0))
+	daySky              = tcell.StyleDefault.Background(tcell.NewHexColor(0x19324a)).Foreground(tcell.NewHexColor(0xa9e7ff))
+	duskSky             = tcell.StyleDefault.Background(tcell.NewHexColor(0x4a2941)).Foreground(tcell.NewHexColor(0xffca8a))
 )
 
 func Draw(screen tcell.Screen, m model.Model) {
@@ -397,7 +403,7 @@ func slotStyle(state model.PlantState) tcell.Style {
 	case model.PlantGrowing:
 		return growStyle
 	case model.PlantReady:
-		return wheatStyle
+		return wheatReadyStyle
 	default:
 		return furrowA
 	}
@@ -558,13 +564,26 @@ func cropStyle(name string, state model.PlantState) tcell.Style {
 	}
 	switch name {
 	case "Alface":
-		return lettuceStyle
+		return cropStageStyle(state, lettucePlantedStyle, lettuceGrowingStyle, lettuceReadyStyle)
 	case "Tomate":
-		return tomatoStyle
+		return cropStageStyle(state, tomatoPlantedStyle, tomatoGrowingStyle, tomatoReadyStyle)
 	case "Trigo":
-		return wheatStyle
+		return cropStageStyle(state, wheatPlantedStyle, wheatGrowingStyle, wheatReadyStyle)
 	default:
 		return slotStyle(state)
+	}
+}
+
+func cropStageStyle(state model.PlantState, planted, growing, ready tcell.Style) tcell.Style {
+	switch state {
+	case model.PlantPlanted:
+		return planted
+	case model.PlantGrowing:
+		return growing
+	case model.PlantReady:
+		return ready
+	default:
+		return furrowA
 	}
 }
 
