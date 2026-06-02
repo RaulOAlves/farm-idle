@@ -34,21 +34,25 @@ func Tick(m model.Model) model.Model {
 				m.Seeds--
 				m.Plants[i].State = model.PlantPlanted
 				m.Plants[i].TicksRemaining = model.GrowTicks
+				m.Plants[i].PlantType = model.DefaultPlantType
 			}
 		case model.PlantPlanted:
 			m.Plants[i].State = model.PlantGrowing
 			m.Plants[i].TicksRemaining--
 			if m.Plants[i].TicksRemaining <= 0 {
 				m.Plants[i].State = model.PlantReady
+				m.Plants[i].TicksRemaining = 0
 			}
 		case model.PlantGrowing:
 			m.Plants[i].TicksRemaining--
 			if m.Plants[i].TicksRemaining <= 0 {
 				m.Plants[i].State = model.PlantReady
+				m.Plants[i].TicksRemaining = 0
 			}
 		case model.PlantReady:
 			m.Stock += m.HarvestLevel
 			m.Plants[i].State = model.PlantEmpty
+			m.Plants[i].PlantType = ""
 			m = addLog(m, fmt.Sprintf("🌾 Colheita: +%d estoques", m.HarvestLevel))
 		}
 	}

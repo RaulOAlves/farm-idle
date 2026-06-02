@@ -5,6 +5,7 @@ import "time"
 
 // PlantState documents slot lifecycle stages.
 type PlantState string
+type FocusMode string
 
 // Plant states
 const (
@@ -12,6 +13,11 @@ const (
 	PlantPlanted PlantState = "planted"
 	PlantGrowing PlantState = "growing"
 	PlantReady   PlantState = "ready"
+)
+
+const (
+	FocusMenu  FocusMode = "menu"
+	FocusField FocusMode = "field"
 )
 
 // Game constants
@@ -23,6 +29,7 @@ const (
 	StockValue                    float64 = 5
 	DefaultAutoSellThreshold              = 5
 	DefaultAutoBuyMaxCashFraction         = 0.30
+	DefaultPlantType                      = "Trigo"
 	MaxLogEntries                         = 20
 	TicksPerDay                           = 60
 )
@@ -32,6 +39,7 @@ const AutoSaveInterval = 60 * time.Second
 type PlantSlot struct {
 	State          PlantState `json:"state"`
 	TicksRemaining int        `json:"ticks_remaining"`
+	PlantType      string     `json:"plant_type,omitempty"`
 }
 
 type LogEntry struct {
@@ -83,7 +91,11 @@ type Model struct {
 
 	// UI state — não persistido
 	Cursor        int
+	FieldCursor   int
+	FocusMode     FocusMode
 	InputMode     bool
 	InputBuffer   string
 	OfflineReport *OfflineResult
+	ViewWidth     int
+	ViewHeight    int
 }

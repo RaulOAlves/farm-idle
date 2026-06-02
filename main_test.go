@@ -123,3 +123,43 @@ func TestHandleInputMode_EscCancelsAction6Edit(t *testing.T) {
 		t.Fatalf("input buffer: want empty, got %q", next.state.InputBuffer)
 	}
 }
+
+func TestHandleNormalMode_TabTogglesFieldFocus(t *testing.T) {
+	a := AppModel{
+		state: model.Model{
+			FocusMode: model.FocusMenu,
+		},
+		keys: input.DefaultKeyMap,
+	}
+
+	got, _ := a.handleNormalMode(tea.KeyMsg{Type: tea.KeyTab})
+	next := got.(AppModel)
+
+	if next.state.FocusMode != model.FocusField {
+		t.Fatalf("focus mode: want %q, got %q", model.FocusField, next.state.FocusMode)
+	}
+}
+
+func TestHandleNormalMode_FieldFocusMovesGridCursor(t *testing.T) {
+	a := AppModel{
+		state: model.Model{
+			FocusMode:   model.FocusField,
+			FieldCursor: 0,
+			ViewWidth:   80,
+			Plants:      make([]model.PlantSlot, 8),
+		},
+		keys: input.DefaultKeyMap,
+	}
+
+	got, _ := a.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	next := got.(AppModel)
+	if next.state.FieldCursor != 1 {
+		t.Fatalf("field cursor after right: want 1, got %d", next.state.FieldCursor)
+	}
+
+	got, _ = next.handleNormalMode(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	next = got.(AppModel)
+	if next.state.FieldCursor != 5 {
+		t.Fatalf("field cursor after down: want 5, got %d", next.state.FieldCursor)
+	}
+}

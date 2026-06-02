@@ -2,14 +2,13 @@ package renderer
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"farm-idle/internal/engine"
 	"farm-idle/internal/model"
 	"github.com/charmbracelet/lipgloss"
 )
-
-const dashWidth = 52
 
 var (
 	outerStyle  = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
@@ -19,29 +18,78 @@ var (
 	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	panelStyle  = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
 )
 
 func View(m model.Model) string {
+	contentWidth := contentWidth(m)
+
 	if m.OfflineReport != nil {
-		return outerStyle.Render(renderOfflineReport(*m.OfflineReport))
+		return outerStyle.Width(contentWidth).Render(renderOfflineReport(*m.OfflineReport))
 	}
 
+	mainBlock := renderMainContent(m, contentWidth)
 	sections := []string{
 		boldStyle.Render(fmt.Sprintf("FARM IDLE v0.1  —  Dia %d", m.Day)),
 		renderStatusLine(m),
-		sep(),
-		lipgloss.JoinHorizontal(lipgloss.Top, renderResources(m), "    ", renderField(m)),
-		sep(),
+		sep(contentWidth),
+		mainBlock,
+		sep(contentWidth),
 		renderActions(m),
-		sep(),
+		sep(contentWidth),
 		renderLog(m),
 	}
 
-	return outerStyle.Render(strings.Join(sections, "\n"))
+	return outerStyle.Width(contentWidth).Render(strings.Join(sections, "\n"))
 }
 
-func sep() string {
-	return strings.Repeat("─", dashWidth)
+func contentWidth(m model.Model) int {
+	switch {
+	case m.ViewWidth >= 140:
+		return 132
+	case m.ViewWidth >= 100:
+		return m.ViewWidth - 6
+	case m.ViewWidth >= 72:
+		return m.ViewWidth - 4
+	default:
+		return 68
+	}
+}
+
+func sep(width int) string {
+	if width < 32 {
+		width = 32
+	}
+	return strings.Repeat("─", width-4)
+}
+
+func renderMainContent(m model.Model, width int) string {
+	left := panelStyle.Width(leftColumnWidth(width)).Render(strings.Join([]string{
+		renderResources(m),
+		"",
+		renderSelectedSlot(m),
+	}, "\n"))
+	right := panelStyle.Width(rightColumnWidth(width)).Render(renderField(m))
+
+	if width < 96 {
+		return lipgloss.JoinVertical(lipgloss.Left, left, right)
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, "  ", right)
+}
+
+func leftColumnWidth(width int) int {
+	if width < 96 {
+		return width - 4
+	}
+	return 30
+}
+
+func rightColumnWidth(width int) int {
+	if width < 96 {
+		return width - 4
+	}
+	return width - leftColumnWidth(width) - 8
 }
 
 func renderStatusLine(m model.Model) string {
@@ -50,7 +98,12 @@ func renderStatusLine(m model.Model) string {
 		autoBuy = fmt.Sprintf("min %d", m.AutoBuyMinimum)
 	}
 
-	return fmt.Sprintf("Receita/min: $%.0f  │  Auto-venda: ≤%d  │  Auto-compra: %s", m.RecentRevenue, m.AutoSellThreshold, autoBuy)
+	focus := "menu"
+	if m.FocusMode == model.FocusField {
+		focus = "campo"
+	}
+
+	return fmt.Sprintf("Receita/min: $%.0f  │  Auto-venda: ≥%d  │  Auto-compra: %s  │  Foco: %s", m.RecentRevenue, m.AutoSellThreshold, autoBuy, focus)
 }
 
 func renderResources(m model.Model) string {
@@ -66,45 +119,51 @@ func renderResources(m model.Model) string {
 }
 
 func renderField(m model.Model) string {
-	active := countActive(m)
+	active, planted, growing, ready, empty, nextReady := summarizeField(m.Plants)
 	pct := 0.0
 	if m.FieldSize > 0 {
 		pct = float64(active) / float64(m.FieldSize)
 	}
-
-	var planted, growing, ready, empty int
-	for _, p := range m.Plants {
-		switch p.State {
-		case model.PlantPlanted:
-			planted++
-		case model.PlantGrowing:
-			growing++
-		case model.PlantReady:
-			ready++
-		default:
-			empty++
-		}
+	nextReadyText := "sem cultivo"
+	if ready > 0 {
+		nextReadyText = "agora"
+	} else if nextReady > 0 {
+		nextReadyText = fmt.Sprintf("%ds", nextReady)
 	}
+	cols := gridCols(m)
 
 	lines := []string{
 		boldStyle.Render("CAMPO"),
-		renderMiniGrid(m.Plants, 4),
+		faintStyle.Render("Tab alterna foco. HJKL/setas movem no grid."),
+		renderMiniGrid(m, cols),
 		progressBar(active, m.FieldSize, 20, pct),
-		fmt.Sprintf("Plantadas: %d  Crescendo: %d", planted, growing),
-		fmt.Sprintf("Prontas:   %d  Vazias:    %d", ready, empty),
+		fmt.Sprintf("Prontas: %d  Crescendo: %d  Vazias: %d", ready, planted+growing, empty),
+		fmt.Sprintf("Próxima: %s  Slots: %d", nextReadyText, m.FieldSize),
 	}
 
 	return strings.Join(lines, "\n")
 }
 
-func countActive(m model.Model) int {
-	n := 0
-	for _, p := range m.Plants {
-		if p.State != model.PlantEmpty {
-			n++
-		}
+func renderSelectedSlot(m model.Model) string {
+	lines := []string{boldStyle.Render("SLOT")}
+	slot, ok := selectedSlot(m)
+	if !ok {
+		lines = append(lines, faintStyle.Render("Campo vazio"))
+		return strings.Join(lines, "\n")
 	}
-	return n
+
+	plantType := slot.PlantType
+	if plantType == "" {
+		plantType = "—"
+	}
+
+	lines = append(lines,
+		fmt.Sprintf("Índice: %d/%d", m.FieldCursor+1, len(m.Plants)),
+		fmt.Sprintf("Tipo:   %s", plantType),
+		fmt.Sprintf("Estado: %s", plantStateLabel(slot.State)),
+		fmt.Sprintf("Tempo:  %s", slotRemainingLabel(slot)),
+	)
+	return strings.Join(lines, "\n")
 }
 
 func progressBar(current, max, width int, pct float64) string {
@@ -132,7 +191,7 @@ func progressBar(current, max, width int, pct float64) string {
 	}
 }
 
-func renderMiniGrid(plants []model.PlantSlot, cols int) string {
+func renderMiniGrid(m model.Model, cols int) string {
 	if cols <= 0 {
 		cols = 4
 	}
@@ -140,8 +199,18 @@ func renderMiniGrid(plants []model.PlantSlot, cols int) string {
 	var lines []string
 	var row strings.Builder
 
-	for i, p := range plants {
-		row.WriteRune(slotRune(p.State))
+	for i, p := range m.Plants {
+		cell := string(slotRune(p.State))
+		if i == m.FieldCursor {
+			if m.FocusMode == model.FocusField {
+				cell = cursorStyle.Render("[" + cell + "]")
+			} else {
+				cell = "[" + cell + "]"
+			}
+		} else {
+			cell = " " + cell + " "
+		}
+		row.WriteString(cell)
 		if (i+1)%cols == 0 {
 			lines = append(lines, row.String())
 			row.Reset()
@@ -212,7 +281,8 @@ func renderActions(m model.Model) string {
 
 		b.WriteString(cursor + s.Render(item.label) + "\n")
 	}
-	b.WriteString(faintStyle.Render("  [Q] Salvar e sair"))
+	b.WriteString(faintStyle.Render("  [Q] Salvar e sair\n"))
+	b.WriteString(faintStyle.Render("  [Tab] Alternar foco menu/campo"))
 
 	return b.String()
 }
@@ -257,4 +327,83 @@ func renderOfflineReport(r model.OfflineResult) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func summarizeField(plants []model.PlantSlot) (active, planted, growing, ready, empty, nextReady int) {
+	nextReady = math.MaxInt
+	for _, p := range plants {
+		switch p.State {
+		case model.PlantPlanted:
+			active++
+			planted++
+			if p.TicksRemaining > 0 && p.TicksRemaining < nextReady {
+				nextReady = p.TicksRemaining
+			}
+		case model.PlantGrowing:
+			active++
+			growing++
+			if p.TicksRemaining > 0 && p.TicksRemaining < nextReady {
+				nextReady = p.TicksRemaining
+			}
+		case model.PlantReady:
+			active++
+			ready++
+			nextReady = 0
+		default:
+			empty++
+		}
+	}
+	if nextReady == math.MaxInt {
+		nextReady = 0
+	}
+	return active, planted, growing, ready, empty, nextReady
+}
+
+func selectedSlot(m model.Model) (model.PlantSlot, bool) {
+	if len(m.Plants) == 0 {
+		return model.PlantSlot{}, false
+	}
+	idx := m.FieldCursor
+	if idx < 0 {
+		idx = 0
+	}
+	if idx >= len(m.Plants) {
+		idx = len(m.Plants) - 1
+	}
+	return m.Plants[idx], true
+}
+
+func slotRemainingLabel(slot model.PlantSlot) string {
+	switch slot.State {
+	case model.PlantEmpty:
+		return "—"
+	case model.PlantReady:
+		return "pronta"
+	default:
+		return fmt.Sprintf("%ds", slot.TicksRemaining)
+	}
+}
+
+func plantStateLabel(state model.PlantState) string {
+	switch state {
+	case model.PlantPlanted:
+		return "plantada"
+	case model.PlantGrowing:
+		return "crescendo"
+	case model.PlantReady:
+		return "pronta"
+	default:
+		return "vazia"
+	}
+}
+
+func gridCols(m model.Model) int {
+	switch {
+	case m.ViewWidth >= 120:
+		return 6
+	case m.ViewWidth >= 90:
+		return 5
+	default:
+		return 4
+	}
 }

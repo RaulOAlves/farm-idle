@@ -24,6 +24,9 @@ func TestTick_PlantsSeeds(t *testing.T) {
 	if got.Plants[0].TicksRemaining != model.GrowTicks {
 		t.Errorf("ticks: want %d, got %d", model.GrowTicks, got.Plants[0].TicksRemaining)
 	}
+	if got.Plants[0].PlantType != model.DefaultPlantType {
+		t.Errorf("plant type: want %q, got %q", model.DefaultPlantType, got.Plants[0].PlantType)
+	}
 }
 
 func TestTick_PlantGrowsFromPlanted(t *testing.T) {
@@ -55,7 +58,7 @@ func TestTick_GrowingBecomesReady(t *testing.T) {
 
 func TestTick_HarvestsReadyPlant(t *testing.T) {
 	m := model.Model{
-		Plants:            []model.PlantSlot{{State: model.PlantReady}},
+		Plants:            []model.PlantSlot{{State: model.PlantReady, PlantType: model.DefaultPlantType}},
 		HarvestLevel:      2,
 		AutoSellThreshold: 999,
 		Stock:             0,
@@ -66,6 +69,9 @@ func TestTick_HarvestsReadyPlant(t *testing.T) {
 	}
 	if got.Plants[0].State != model.PlantEmpty {
 		t.Errorf("state: want %q, got %q", model.PlantEmpty, got.Plants[0].State)
+	}
+	if got.Plants[0].PlantType != "" {
+		t.Errorf("plant type after harvest: want empty, got %q", got.Plants[0].PlantType)
 	}
 }
 

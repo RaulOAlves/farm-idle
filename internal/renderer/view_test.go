@@ -24,7 +24,7 @@ func TestView_ShowsReceitaMinAndAutoBuy(t *testing.T) {
 	})
 
 	mustContain(t, view, "Receita/min: $42")
-	mustContain(t, view, "Auto-venda: ≤7")
+	mustContain(t, view, "Auto-venda: ≥7")
 	mustContain(t, view, "Auto-compra: min 5")
 	if strings.Contains(view, "Lucro/min") {
 		t.Fatalf("view should not contain old label %q\nview:\n%s", "Lucro/min", view)
@@ -48,10 +48,10 @@ func TestView_ShowsMiniGridAndAction6State(t *testing.T) {
 		},
 	})
 
-	mustContain(t, view, "□·▓█")
-	mustContain(t, view, "□")
+	mustContain(t, view, "[□] ·  ▓  █")
 	mustContain(t, view, "[6] Auto-compra min")
 	mustContain(t, view, "8")
+	mustContain(t, view, "Próxima:")
 
 	editView := plainView(model.Model{
 		Day:               1,
@@ -67,6 +67,28 @@ func TestView_ShowsMiniGridAndAction6State(t *testing.T) {
 	})
 
 	mustContain(t, editView, "[6] Auto-compra min: 11_")
+}
+
+func TestView_ShowsSelectedSlotDetailsAndFieldFocus(t *testing.T) {
+	view := plainView(model.Model{
+		Day:         2,
+		ViewWidth:   110,
+		FocusMode:   model.FocusField,
+		FieldCursor: 1,
+		FieldSize:   4,
+		Plants: []model.PlantSlot{
+			{State: model.PlantEmpty},
+			{State: model.PlantGrowing, TicksRemaining: 9, PlantType: model.DefaultPlantType},
+			{State: model.PlantReady, PlantType: model.DefaultPlantType},
+			{State: model.PlantEmpty},
+		},
+	})
+
+	mustContain(t, view, "Foco: campo")
+	mustContain(t, view, "SLOT")
+	mustContain(t, view, "Tipo:   Trigo")
+	mustContain(t, view, "Estado: crescendo")
+	mustContain(t, view, "Tempo:  9s")
 }
 
 func plainView(m model.Model) string {

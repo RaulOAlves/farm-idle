@@ -65,6 +65,12 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = persistence.Save(a.state, savePath)
 		return a, autoSaveCmd()
 
+	case tea.WindowSizeMsg:
+		a.state.ViewWidth = msg.Width
+		a.state.ViewHeight = msg.Height
+		a.state = normalizeUIState(a.state)
+		return a, nil
+
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
 			return a, tea.Quit
@@ -79,6 +85,8 @@ func (a AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a AppModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	a.state = normalizeUIState(a.state)
+
 	if a.state.OfflineReport != nil {
 		if key.Matches(msg, a.keys.Select) {
 			a.state.OfflineReport = nil
@@ -87,16 +95,40 @@ func (a AppModel) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case msg.String() == "tab":
+		if a.state.FocusMode == model.FocusField {
+			a.state.FocusMode = model.FocusMenu
+		} else {
+			a.state.FocusMode = model.FocusField
+		}
+	case a.state.FocusMode == model.FocusField && msg.String() == "h":
+		a.state.FieldCursor = moveFieldCursor(a.state, -1, 0)
+	case a.state.FocusMode == model.FocusField && msg.String() == "l":
+		a.state.FieldCursor = moveFieldCursor(a.state, 1, 0)
 	case key.Matches(msg, a.keys.Up):
-		if a.state.Cursor > 0 {
+		if a.state.FocusMode == model.FocusField {
+			a.state.FieldCursor = moveFieldCursor(a.state, 0, -1)
+		} else if a.state.Cursor > 0 {
 			a.state.Cursor--
 		}
 	case key.Matches(msg, a.keys.Down):
-		if a.state.Cursor < 5 {
+		if a.state.FocusMode == model.FocusField {
+			a.state.FieldCursor = moveFieldCursor(a.state, 0, 1)
+		} else if a.state.Cursor < 5 {
 			a.state.Cursor++
 		}
+	case msg.String() == "left":
+		if a.state.FocusMode == model.FocusField {
+			a.state.FieldCursor = moveFieldCursor(a.state, -1, 0)
+		}
+	case msg.String() == "right":
+		if a.state.FocusMode == model.FocusField {
+			a.state.FieldCursor = moveFieldCursor(a.state, 1, 0)
+		}
 	case key.Matches(msg, a.keys.Select):
-		a = a.executeAction(a.state.Cursor)
+		if a.state.FocusMode == model.FocusMenu {
+			a = a.executeAction(a.state.Cursor)
+		}
 	case key.Matches(msg, a.keys.Action1):
 		a = a.executeAction(0)
 	case key.Matches(msg, a.keys.Action2):
@@ -144,6 +176,60 @@ func (a AppModel) executeAction(index int) AppModel {
 	return a
 }
 
+func normalizeUIState(m model.Model) model.Model {
+	if m.FocusMode == "" {
+		m.FocusMode = model.FocusMenu
+	}
+	if len(m.Plants) == 0 {
+		m.FieldCursor = 0
+		return m
+	}
+	if m.FieldCursor < 0 {
+		m.FieldCursor = 0
+	}
+	if m.FieldCursor >= len(m.Plants) {
+		m.FieldCursor = len(m.Plants) - 1
+	}
+	return m
+}
+
+func moveFieldCursor(m model.Model, dx, dy int) int {
+	if len(m.Plants) == 0 {
+		return 0
+	}
+
+	cols := fieldGridCols(m)
+	if cols <= 0 {
+		cols = 4
+	}
+
+	idx := m.FieldCursor
+	x := idx % cols
+	y := idx / cols
+	nextX := x + dx
+	nextY := y + dy
+	if nextX < 0 || nextX >= cols || nextY < 0 {
+		return idx
+	}
+
+	next := nextY*cols + nextX
+	if next < 0 || next >= len(m.Plants) {
+		return idx
+	}
+	return next
+}
+
+func fieldGridCols(m model.Model) int {
+	switch {
+	case m.ViewWidth >= 120:
+		return 6
+	case m.ViewWidth >= 90:
+		return 5
+	default:
+		return 4
+	}
+}
+
 func (a AppModel) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
@@ -178,7 +264,7 @@ func (a AppModel) handleInputMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (a AppModel) View() string {
-	return renderer.View(a.state)
+	return renderer.View(normalizeUIState(a.state))
 }
 
 func main() {
