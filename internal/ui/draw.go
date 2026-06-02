@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"strings"
 
 	"farm-idle/internal/engine"
 	"farm-idle/internal/model"
@@ -20,6 +19,13 @@ var (
 	leafStyle   = baseStyle.Foreground(tcell.NewHexColor(0x79d45b))
 	readyStyle  = baseStyle.Foreground(tcell.NewHexColor(0xf8cb4d)).Bold(true)
 	cursorStyle = baseStyle.Foreground(tcell.NewHexColor(0x0b1d18)).Background(tcell.NewHexColor(0x98e87b)).Bold(true)
+	skyStyle    = tcell.StyleDefault.Background(tcell.NewHexColor(0x19324a)).Foreground(tcell.NewHexColor(0xa9e7ff))
+	grassStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x254f22)).Foreground(tcell.NewHexColor(0x87d96c))
+	furrowA     = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x8b5c3a))
+	furrowB     = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xa87449))
+	sproutStyle = tcell.StyleDefault.Background(tcell.NewHexColor(0x4b2e1f)).Foreground(tcell.NewHexColor(0x9ee06d)).Bold(true)
+	growStyle   = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0x63d471)).Bold(true)
+	wheatStyle  = tcell.StyleDefault.Background(tcell.NewHexColor(0x5a3825)).Foreground(tcell.NewHexColor(0xffd966)).Bold(true)
 )
 
 func Draw(screen tcell.Screen, m model.Model) {
@@ -84,23 +90,28 @@ func drawFieldBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 	drawBox(screen, x, y, w, h, " CAMPO ", borderStyle)
 	drawText(screen, x+2, y+1, "Tab troca foco. HJKL/setas movem cursor.", mutedStyle)
 
-	gridY := y + 3
+	fieldTop := y + 3
+	fieldHeight := maxInt(6, h-7)
+	fieldBottom := minInt(y+h-4, fieldTop+fieldHeight-1)
 	gridX := x + 2
 	cols := gridCols(m)
+	drawFieldBackdrop(screen, gridX, fieldTop, w-4, fieldBottom-fieldTop+1)
+
+	tileW := 5
+	tileH := 2
+	gridY := fieldTop + 2
 	for i, p := range m.Plants {
-		cellX := gridX + (i%cols)*4
-		cellY := gridY + (i / cols)
-		style := slotStyle(p.State)
-		text := " " + string(slotRune(p.State)) + " "
-		if i == m.FieldCursor {
-			style = cursorStyle
-			text = "[" + string(slotRune(p.State)) + "]"
+		cellX := gridX + (i%cols)*tileW
+		cellY := gridY + (i/cols)*tileH
+		if cellY+1 > fieldBottom-1 || cellX+tileW-1 > x+w-3 {
+			continue
 		}
-		drawText(screen, cellX, cellY, text, style)
+		drawCropTile(screen, cellX, cellY, tileW, p, i == m.FieldCursor, m.FocusMode == model.FocusField, (i/cols)%2 == 0)
 	}
 
 	active, planted, growing, ready, empty, nextReady := summarizeField(m.Plants)
-	progressY := minInt(y+h-5, gridY+(len(m.Plants)/cols)+2)
+	rows := (len(m.Plants) + cols - 1) / cols
+	progressY := minInt(y+h-5, gridY+rows*tileH+1)
 	drawProgress(screen, x+2, progressY, minInt(w-4, 28), active, maxInt(1, m.FieldSize))
 	drawText(screen, x+2, progressY+1, fmt.Sprintf("Prontas %d | Crescendo %d | Vazias %d", ready, planted+growing, empty), labelStyle)
 	drawText(screen, x+2, progressY+2, fmt.Sprintf("Proxima %s | Slots %d", nextReadyLabel(ready, nextReady), m.FieldSize), accentStyle)
@@ -366,13 +377,13 @@ func nextReadyLabel(ready, nextReady int) string {
 func slotStyle(state model.PlantState) tcell.Style {
 	switch state {
 	case model.PlantPlanted:
-		return soilStyle
+		return sproutStyle
 	case model.PlantGrowing:
-		return leafStyle
+		return growStyle
 	case model.PlantReady:
-		return readyStyle
+		return wheatStyle
 	default:
-		return mutedStyle
+		return furrowA
 	}
 }
 
@@ -386,6 +397,95 @@ func slotRune(state model.PlantState) rune {
 		return '█'
 	default:
 		return '□'
+	}
+}
+
+func drawFieldBackdrop(screen tcell.Screen, x, y, w, h int) {
+	skyRows := minInt(2, h)
+	for row := 0; row < skyRows; row++ {
+		for col := 0; col < w; col++ {
+			ch := ' '
+			if row == 1 && col%9 == 0 {
+				ch = '·'
+			}
+			put(screen, x+col, y+row, ch, skyStyle)
+		}
+	}
+	if h <= skyRows {
+		return
+	}
+	for col := 0; col < w; col++ {
+		ch := '▄'
+		style := grassStyle
+		if col%7 == 0 {
+			ch = '▆'
+		}
+		put(screen, x+col, y+skyRows, ch, style)
+	}
+	for row := skyRows + 1; row < h; row++ {
+		for col := 0; col < w; col++ {
+			style := furrowA
+			ch := ' '
+			if ((row+col)/2)%2 == 0 {
+				style = furrowB
+			}
+			if col%5 == 0 {
+				ch = '·'
+			}
+			put(screen, x+col, y+row, ch, style)
+		}
+	}
+}
+
+func drawCropTile(screen tcell.Screen, x, y, w int, slot model.PlantSlot, selected, focused, alt bool) {
+	base := furrowA
+	if alt {
+		base = furrowB
+	}
+	style := slotStyle(slot.State)
+	if slot.State == model.PlantEmpty {
+		style = base
+	}
+
+	for dx := 0; dx < w; dx++ {
+		put(screen, x+dx, y, ' ', base)
+		put(screen, x+dx, y+1, ' ', base)
+	}
+
+	drawText(screen, x, y+1, "~~~~~", base)
+
+	if selected {
+		frame := cursorStyle
+		if !focused {
+			frame = accentStyle.Background(tcell.NewHexColor(0x173038)).Bold(true)
+		}
+		put(screen, x, y, '[', frame)
+		put(screen, x+w-1, y, ']', frame)
+		put(screen, x, y+1, '[', frame)
+		put(screen, x+w-1, y+1, ']', frame)
+	}
+
+	glyph := cropGlyph(slot.State)
+	textX := x + 2
+	for i, r := range glyph {
+		put(screen, textX+i, y, r, style)
+	}
+	if slot.State == model.PlantReady {
+		put(screen, x+2, y+1, 'm', wheatStyle)
+		put(screen, x+3, y+1, 'm', wheatStyle)
+	}
+}
+
+func cropGlyph(state model.PlantState) string {
+	switch state {
+	case model.PlantPlanted:
+		return " i"
+	case model.PlantGrowing:
+		return "Yv"
+	case model.PlantReady:
+		return "WW"
+	default:
+		return "··"
 	}
 }
 
@@ -414,8 +514,4 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
-}
-
-func _unused(_ ...string) {
-	_ = strings.Builder{}
 }
