@@ -12,6 +12,7 @@ import (
 var ErrInsufficientFunds = errors.New("insufficient funds")
 
 func Tick(m model.Model) model.Model {
+	m = normalizeStock(m)
 	advanceRevenueWindow(&m)
 
 	if shouldAutoBuy(m) {
@@ -57,7 +58,8 @@ func Tick(m model.Model) model.Model {
 				yield = 1
 			}
 			harvested := yield * m.HarvestLevel
-			m.Stock += harvested
+			m.StockByCrop[crop.Name] += harvested
+			m.Stock = totalStock(m.StockByCrop)
 			m.Plants[i].State = model.PlantEmpty
 			m.Plants[i].PlantType = ""
 			m = addLog(m, fmt.Sprintf("🌾 Colheita %s: +%d estoques", crop.Name, harvested))
@@ -65,11 +67,11 @@ func Tick(m model.Model) model.Model {
 	}
 
 	if m.AutoSellThreshold > 0 && m.Stock >= m.AutoSellThreshold {
-		earned := float64(m.Stock) * model.StockValue
-		m.Money += earned
-		recordRevenue(&m, earned)
-		m.Stock = 0
-		m = addLog(m, fmt.Sprintf("💰 Auto-venda: +$%.0f", earned))
+		var earned float64
+		m, earned = sellStock(m, "Auto-venda")
+		if earned > 0 {
+			recordRevenue(&m, earned)
+		}
 	}
 
 	m.TickCount++
@@ -149,14 +151,15 @@ func UpgradeHarvest(m model.Model) (model.Model, error) {
 }
 
 func SellAll(m model.Model) (model.Model, float64) {
+	m = normalizeStock(m)
 	if m.Stock == 0 {
 		return m, 0
 	}
-	earned := float64(m.Stock) * model.StockValue
-	m = addLog(m, fmt.Sprintf("💰 Venda total: +$%.0f (%d estoques)", earned, m.Stock))
-	m.Money += earned
-	m.Stock = 0
-	recordRevenue(&m, earned)
+	var earned float64
+	m, earned = sellStock(m, "Venda total")
+	if earned > 0 {
+		recordRevenue(&m, earned)
+	}
 	return m, earned
 }
 
@@ -202,4 +205,54 @@ func recordRevenue(m *model.Model, earned float64) {
 	m.RevenueTracker.Buckets[idx] += earned
 	m.RevenueTracker.Total += earned
 	m.RecentRevenue = m.RevenueTracker.Total
+}
+
+func normalizeStock(m model.Model) model.Model {
+	stocks := make(map[string]int, len(m.StockByCrop)+1)
+	for crop, qty := range m.StockByCrop {
+		if qty > 0 {
+			stocks[model.CropByName(crop).Name] += qty
+		}
+	}
+	if len(stocks) == 0 && m.Stock > 0 {
+		stocks[model.DefaultPlantType] = m.Stock
+	}
+	m.StockByCrop = stocks
+	m.Stock = totalStock(stocks)
+	return m
+}
+
+func totalStock(stocks map[string]int) int {
+	total := 0
+	for _, qty := range stocks {
+		total += qty
+	}
+	return total
+}
+
+func stockValue(stocks map[string]int) float64 {
+	var total float64
+	for cropName, qty := range stocks {
+		crop := model.CropByName(cropName)
+		total += float64(qty) * crop.SellPrice
+	}
+	return total
+}
+
+func StockMarketValue(m model.Model) float64 {
+	m = normalizeStock(m)
+	return stockValue(m.StockByCrop)
+}
+
+func sellStock(m model.Model, label string) (model.Model, float64) {
+	m = normalizeStock(m)
+	if m.Stock == 0 {
+		return m, 0
+	}
+	earned := stockValue(m.StockByCrop)
+	stockCount := m.Stock
+	m.Money += earned
+	m.Stock = 0
+	m.StockByCrop = map[string]int{}
+	return addLog(m, fmt.Sprintf("💰 %s: +$%.0f (%d estoques)", label, earned, stockCount)), earned
 }

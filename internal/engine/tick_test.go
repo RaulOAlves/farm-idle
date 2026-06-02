@@ -68,6 +68,9 @@ func TestTick_HarvestsReadyPlant(t *testing.T) {
 	if got.Stock != 2 {
 		t.Errorf("stock: want 2, got %d", got.Stock)
 	}
+	if got.StockByCrop[model.DefaultPlantType] != 2 {
+		t.Errorf("stock by crop: want 2, got %d", got.StockByCrop[model.DefaultPlantType])
+	}
 	if got.Plants[0].State != model.PlantEmpty {
 		t.Errorf("state: want %q, got %q", model.PlantEmpty, got.Plants[0].State)
 	}
@@ -103,6 +106,9 @@ func TestTick_HarvestsCropSpecificYield(t *testing.T) {
 	want := model.CropByName("Milho").Yield * 2
 	if got.Stock != want {
 		t.Fatalf("stock: want %d, got %d", want, got.Stock)
+	}
+	if got.StockByCrop["Milho"] != want {
+		t.Fatalf("stock by crop: want %d, got %d", want, got.StockByCrop["Milho"])
 	}
 }
 
@@ -308,6 +314,29 @@ func TestSellAll_SellsStock(t *testing.T) {
 	}
 	if got.Money != 20 {
 		t.Errorf("money: want 20, got %.0f", got.Money)
+	}
+}
+
+func TestSellAll_UsesCropSpecificPrices(t *testing.T) {
+	m := model.Model{
+		StockByCrop: map[string]int{
+			"Alface": 2,
+			"Milho":  3,
+		},
+	}
+	got, earned := engine.SellAll(m)
+	want := 2*model.CropByName("Alface").SellPrice + 3*model.CropByName("Milho").SellPrice
+	if earned != want {
+		t.Fatalf("earned: want %.0f, got %.0f", want, earned)
+	}
+	if got.Money != want {
+		t.Fatalf("money: want %.0f, got %.0f", want, got.Money)
+	}
+	if got.Stock != 0 {
+		t.Fatalf("stock: want 0, got %d", got.Stock)
+	}
+	if len(got.StockByCrop) != 0 {
+		t.Fatalf("stock_by_crop: want empty, got %+v", got.StockByCrop)
 	}
 }
 

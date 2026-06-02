@@ -128,7 +128,7 @@ func TestHandleNormalKey_FieldFocusMovesGridCursor(t *testing.T) {
 			FocusMode:   model.FocusField,
 			FieldCursor: 0,
 			ViewWidth:   80,
-			Plants:      make([]model.PlantSlot, 8),
+			Plants:      make([]model.PlantSlot, 20),
 		},
 	}
 
@@ -138,8 +138,8 @@ func TestHandleNormalKey_FieldFocusMovesGridCursor(t *testing.T) {
 	}
 
 	a.handleNormalKey("j")
-	if a.state.FieldCursor != 5 {
-		t.Fatalf("field cursor after down: want 5, got %d", a.state.FieldCursor)
+	if a.state.FieldCursor != 11 {
+		t.Fatalf("field cursor after down: want 11, got %d", a.state.FieldCursor)
 	}
 }
 

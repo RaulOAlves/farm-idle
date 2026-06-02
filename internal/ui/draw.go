@@ -44,7 +44,7 @@ func Draw(screen tcell.Screen, m model.Model) {
 	drawBanner(screen, 2, 1)
 	drawText(screen, 2, 7, fmt.Sprintf("Dia %03d | Receita/min $%.0f | Auto-venda >=%d | Auto-compra %s | Foco %s",
 		m.Day, m.RecentRevenue, m.AutoSellThreshold, autoBuyLabel(m), focusLabel(m)), accentStyle)
-	drawText(screen, 2, 8, fmt.Sprintf("Ambiente %s | Vento %s", phaseLabel(m), breezeLabel(m)), mutedStyle)
+	drawText(screen, 2, 8, fmt.Sprintf("Ambiente %s | Vento %s | Cultura %s $%.0f", phaseLabel(m), breezeLabel(m), model.CropByName(m.SelectedCrop).Name, model.CropByName(m.SelectedCrop).SellPrice), mutedStyle)
 
 	if w >= 130 {
 		drawWide(screen, m, w, h)
@@ -79,9 +79,11 @@ func drawResourceBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 		fmt.Sprintf("Dinheiro   $%.0f", m.Money),
 		fmt.Sprintf("Sementes   %d", m.Seeds),
 		fmt.Sprintf("Estoque    %d", m.Stock),
+		fmt.Sprintf("Valor est. $%.0f", engine.StockMarketValue(m)),
 		fmt.Sprintf("Nivel col  %d", m.HarvestLevel),
 		fmt.Sprintf("Lote seed  %d", m.SeedsPerPurchase),
 		fmt.Sprintf("Plantio    %s", m.SelectedCrop),
+		fmt.Sprintf("Preco/un   $%.0f", model.CropByName(m.SelectedCrop).SellPrice),
 		"",
 		"SLOT",
 		fmt.Sprintf("Indice     %d/%d", selectedIndex(m), maxInt(1, len(m.Plants))),
@@ -106,9 +108,9 @@ func drawFieldBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 	tileW := 5
 	tileH := 2
 	gridY := fieldTop + 2
+	blocksPerRow := fieldBlocksPerRow(w)
 	for i, p := range m.Plants {
-		cellX := gridX + (i%cols)*tileW
-		cellY := gridY + (i/cols)*tileH
+		cellX, cellY := fieldSlotPosition(gridX, gridY, i, tileW, tileH, blocksPerRow)
 		if cellY+1 > fieldBottom-1 || cellX+tileW-1 > x+w-3 {
 			continue
 		}
@@ -116,7 +118,7 @@ func drawFieldBox(screen tcell.Screen, x, y, w, h int, m model.Model) {
 	}
 
 	active, planted, growing, ready, empty, nextReady := summarizeField(m.Plants)
-	rows := (len(m.Plants) + cols - 1) / cols
+	rows := visibleFieldRows(len(m.Plants), blocksPerRow)
 	progressY := minInt(y+h-5, gridY+rows*tileH+1)
 	drawProgress(screen, x+2, progressY, minInt(w-4, 28), active, maxInt(1, m.FieldSize))
 	drawText(screen, x+2, progressY+1, fmt.Sprintf("Prontas %d | Crescendo %d | Vazias %d", ready, planted+growing, empty), labelStyle)
@@ -295,7 +297,7 @@ func action6Line(m model.Model) string {
 
 func action7Line(m model.Model) string {
 	crop := model.CropByName(m.SelectedCrop)
-	return fmt.Sprintf("%s [7] Cultura ativa    %s (%ds)", cursorMark(m, 6), crop.Name, crop.GrowTicks)
+	return fmt.Sprintf("%s [7] Cultura ativa    %s (%ds $%.0f)", cursorMark(m, 6), crop.Name, crop.GrowTicks, crop.SellPrice)
 }
 
 func selectedIndex(m model.Model) int {
@@ -556,16 +558,48 @@ func readyTailGlyph(tickCount int) string {
 }
 
 func gridCols(m model.Model) int {
-	switch {
-	case m.ViewWidth >= 150:
-		return 8
-	case m.ViewWidth >= 120:
-		return 6
-	case m.ViewWidth >= 90:
-		return 5
-	default:
-		return 4
+	return 10
+}
+
+func fieldBlocksPerRow(panelWidth int) int {
+	tileW := 5
+	blockWidth := 10 * tileW
+	withGap := blockWidth + 2
+	blocks := maxInt(1, (panelWidth-4)/withGap)
+	return blocks
+}
+
+func fieldSlotPosition(gridX, gridY, slotIndex, tileW, tileH, blocksPerRow int) (int, int) {
+	const blockSize = 10
+	blockCapacity := blockSize * blockSize
+	block := slotIndex / blockCapacity
+	inBlock := slotIndex % blockCapacity
+	blockX := block % blocksPerRow
+	blockY := block / blocksPerRow
+	col := inBlock % blockSize
+	row := inBlock / blockSize
+	x := gridX + blockX*(blockSize*tileW+2) + col*tileW
+	y := gridY + blockY*(blockSize*tileH+1) + row*tileH
+	return x, y
+}
+
+func visibleFieldRows(slotCount, blocksPerRow int) int {
+	const blockSize = 10
+	const blockCapacity = blockSize * blockSize
+	if slotCount <= 0 {
+		return 0
 	}
+	blocks := (slotCount + blockCapacity - 1) / blockCapacity
+	blockRows := (blocks + blocksPerRow - 1) / blocksPerRow
+	lastBlockSlots := slotCount % blockCapacity
+	if lastBlockSlots == 0 {
+		lastBlockSlots = blockCapacity
+	}
+	lastBlockRows := (lastBlockSlots + blockSize - 1) / blockSize
+	if blockRows <= 1 {
+		return lastBlockRows
+	}
+	return (blockRows-1)*blockSize + lastBlockRows
 }
 
 func minInt(a, b int) int {

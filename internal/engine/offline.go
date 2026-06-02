@@ -3,6 +3,7 @@ package engine
 
 import (
 	"time"
+
 	"farm-idle/internal/model"
 )
 
@@ -21,6 +22,7 @@ func CalcOfflineProgress(m model.Model, now time.Time) (model.Model, model.Offli
 
 	moneyBefore := m.Money
 	stockBefore := m.Stock
+	stockValueBefore := StockMarketValue(m)
 
 	for i := 0; i < ticks; i++ {
 		m = Tick(m)
@@ -28,11 +30,10 @@ func CalcOfflineProgress(m model.Model, now time.Time) (model.Model, model.Offli
 
 	// revenue = dinheiro ganho + valor do estoque acumulado
 	moneyGained := m.Money - moneyBefore
-	stockValueGained := float64(m.Stock-stockBefore) * model.StockValue
+	stockValueGained := StockMarketValue(m) - stockValueBefore
 	revenue := moneyGained + stockValueGained
 
-	// harvests ≈ total produzido / valor por unidade
-	harvests := int(revenue / model.StockValue)
+	harvests := m.Stock - stockBefore
 
 	// eficiência: harvests reais vs máximo teórico
 	maxPossible := 0

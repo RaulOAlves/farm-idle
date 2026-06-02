@@ -13,6 +13,7 @@ type SaveData struct {
 	Money                  float64              `json:"money"`
 	Seeds                  int                  `json:"seeds"`
 	Stock                  int                  `json:"stock"`
+	StockByCrop            map[string]int       `json:"stock_by_crop"`
 	FieldSize              int                  `json:"field_size"`
 	Plants                 []model.PlantSlot    `json:"plants"`
 	SeedsPerPurchase       int                  `json:"seeds_per_purchase"`
@@ -38,6 +39,7 @@ func DefaultModel() model.Model {
 	return model.Model{
 		Money:                  100,
 		Seeds:                  10,
+		StockByCrop:            map[string]int{},
 		FieldSize:              10,
 		Plants:                 plants,
 		SeedsPerPurchase:       5,
@@ -52,10 +54,18 @@ func DefaultModel() model.Model {
 }
 
 func Save(m model.Model, path string) error {
+	stockByCrop := normalizeStockByCrop(m.StockByCrop)
+	stock := sumStockByCrop(stockByCrop)
+	if stock == 0 && m.Stock > 0 {
+		stock = m.Stock
+		stockByCrop = map[string]int{model.DefaultPlantType: m.Stock}
+	}
+
 	data := SaveData{
 		Money:                  m.Money,
 		Seeds:                  m.Seeds,
-		Stock:                  m.Stock,
+		Stock:                  stock,
+		StockByCrop:            stockByCrop,
 		FieldSize:              m.FieldSize,
 		Plants:                 m.Plants,
 		SeedsPerPurchase:       m.SeedsPerPurchase,
@@ -98,6 +108,12 @@ func Load(path string) (model.Model, error) {
 	m.Money = data.Money
 	m.Seeds = data.Seeds
 	m.Stock = data.Stock
+	if len(data.StockByCrop) > 0 {
+		m.StockByCrop = normalizeStockByCrop(data.StockByCrop)
+		m.Stock = sumStockByCrop(m.StockByCrop)
+	} else if data.Stock > 0 {
+		m.StockByCrop = map[string]int{model.DefaultPlantType: data.Stock}
+	}
 	if data.FieldSize > 0 {
 		m.FieldSize = data.FieldSize
 	}
@@ -139,4 +155,22 @@ func Load(path string) (model.Model, error) {
 	m.RecentRevenue = m.RevenueTracker.Total
 
 	return m, nil
+}
+
+func normalizeStockByCrop(stocks map[string]int) map[string]int {
+	out := make(map[string]int, len(stocks))
+	for crop, qty := range stocks {
+		if qty > 0 {
+			out[model.CropByName(crop).Name] += qty
+		}
+	}
+	return out
+}
+
+func sumStockByCrop(stocks map[string]int) int {
+	total := 0
+	for _, qty := range stocks {
+		total += qty
+	}
+	return total
 }

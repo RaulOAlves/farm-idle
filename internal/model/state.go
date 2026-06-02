@@ -11,6 +11,7 @@ type CropProfile struct {
 	Name      string
 	GrowTicks int
 	Yield     int
+	SellPrice float64
 }
 
 // Plant states
@@ -68,9 +69,10 @@ type RevenueTracker struct {
 
 type Model struct {
 	// Resources
-	Money float64
-	Seeds int
-	Stock int
+	Money       float64
+	Seeds       int
+	Stock       int
+	StockByCrop map[string]int
 
 	// Field
 	FieldSize int
@@ -108,9 +110,9 @@ type Model struct {
 }
 
 var cropCatalog = []CropProfile{
-	{Name: "Alface", GrowTicks: 18, Yield: 1},
-	{Name: "Trigo", GrowTicks: GrowTicks, Yield: 1},
-	{Name: "Milho", GrowTicks: 42, Yield: 2},
+	{Name: "Alface", GrowTicks: 18, Yield: 1, SellPrice: 3},
+	{Name: "Trigo", GrowTicks: GrowTicks, Yield: 1, SellPrice: StockValue},
+	{Name: "Milho", GrowTicks: 42, Yield: 2, SellPrice: 4},
 }
 
 func CropCatalog() []CropProfile {

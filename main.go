@@ -204,16 +204,7 @@ func moveFieldCursor(m model.Model, dx, dy int) int {
 }
 
 func fieldGridCols(m model.Model) int {
-	switch {
-	case m.ViewWidth >= 150:
-		return 8
-	case m.ViewWidth >= 120:
-		return 6
-	case m.ViewWidth >= 90:
-		return 5
-	default:
-		return 4
-	}
+	return 10
 }
 
 func keyName(ev *tcell.EventKey) string {
