@@ -26,7 +26,6 @@ type SaveData struct {
 	LastSave               time.Time            `json:"last_save"`
 	MoneySnapshot          float64              `json:"money_snapshot"`
 	RevenueTracker         model.RevenueTracker `json:"revenue_tracker"`
-	RecentRevenue          float64              `json:"recent_revenue"`
 }
 
 func DefaultModel() model.Model {
@@ -68,7 +67,6 @@ func Save(m model.Model, path string) error {
 		LastSave:               m.LastSave,
 		MoneySnapshot:          m.MoneySnapshot,
 		RevenueTracker:         m.RevenueTracker,
-		RecentRevenue:          m.RecentRevenue,
 	}
 
 	b, err := json.MarshalIndent(data, "", "  ")
@@ -129,13 +127,10 @@ func Load(path string) (model.Model, error) {
 	m.LastSave = data.LastSave
 	m.MoneySnapshot = data.MoneySnapshot
 	m.RevenueTracker = data.RevenueTracker
-	m.RecentRevenue = data.RecentRevenue
 	if m.MoneySnapshot == 0 && m.TickCount == 0 {
 		m.MoneySnapshot = m.Money
 	}
-	if m.RecentRevenue == 0 && m.RevenueTracker.Total > 0 {
-		m.RecentRevenue = m.RevenueTracker.Total
-	}
+	m.RecentRevenue = m.RevenueTracker.Total
 
 	return m, nil
 }

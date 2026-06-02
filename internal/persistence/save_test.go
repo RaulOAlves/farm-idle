@@ -2,6 +2,7 @@
 package persistence_test
 
 import (
+	"encoding/json"
 	"farm-idle/internal/model"
 	"farm-idle/internal/persistence"
 	"os"
@@ -151,8 +152,21 @@ func TestSaveLoad_RoundtripAutoBuyAndRevenueTracker(t *testing.T) {
 	if loaded.RevenueTracker != m.RevenueTracker {
 		t.Fatalf("revenue_tracker: want %+v, got %+v", m.RevenueTracker, loaded.RevenueTracker)
 	}
-	if loaded.RecentRevenue != m.RecentRevenue {
-		t.Fatalf("recent_revenue: want %.2f, got %.2f", m.RecentRevenue, loaded.RecentRevenue)
+	if loaded.RecentRevenue != loaded.RevenueTracker.Total {
+		t.Fatalf("recent_revenue: want derived %.2f, got %.2f", loaded.RevenueTracker.Total, loaded.RecentRevenue)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	var saved map[string]any
+	if err := json.Unmarshal(raw, &saved); err != nil {
+		t.Fatalf("Unmarshal failed: %v", err)
+	}
+	if _, exists := saved["recent_revenue"]; exists {
+		t.Fatalf("recent_revenue should not be persisted")
 	}
 }
 
